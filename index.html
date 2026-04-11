@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="Sistema de Gestão de Sustentabilidade e Engajamento Paroquial – transparência financeira, voluntários e comunicação integrada." />
+  <meta name="theme-color" content="#6c3fc5" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="SUSTEN" />
+
+  <title>SUSTEN – Gestão Paroquial</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+
+  <!-- Fontes -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- ═══════════════════ LOADING SCREEN ═══════════════════════ -->
+<div id="loading-screen">
+  <div class="loading-logo">✝️</div>
+  <div class="loading-title">SUSTEN</div>
+  <div class="loading-subtitle">Gestão de Sustentabilidade Paroquial</div>
+  <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+</div>
+
+<!-- ═══════════════════ TOAST CONTAINER ══════════════════════ -->
+<div id="toast-container" aria-live="polite"></div>
+
+<!-- ═══════════════════ APP SHELL ════════════════════════════ -->
+<div id="app">
+
+  <!-- ── Sidebar ──────────────────────────────────────────── -->
+  <aside id="sidebar" class="sidebar" role="navigation" aria-label="Menu principal">
+    <div class="sidebar-header">
+      <div class="sidebar-brand">
+        <span class="brand-icon">✝️</span>
+        <div class="brand-name">SUSTEN<span>Gestão Paroquial</span></div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Principal</div>
+      <button class="nav-item active" data-page="dashboard" aria-label="Dashboard">
+        <span class="nav-icon">🏠</span> Dashboard
+      </button>
+
+      <div class="nav-section-label">Financeiro</div>
+      <button class="nav-item" data-page="financeiro" aria-label="Financeiro">
+        <span class="nav-icon">💰</span> Financeiro
+      </button>
+      <button class="nav-item" data-page="metas" aria-label="Termômetro de Metas">
+        <span class="nav-icon">🎯</span> Termômetro de Metas
+      </button>
+      <button class="nav-item" data-page="dizimo" aria-label="Dízimo Digital">
+        <span class="nav-icon">🙏</span> Dízimo Digital
+      </button>
+
+      <div class="nav-section-label">Comunidade</div>
+      <button class="nav-item" data-page="voluntarios" aria-label="Banco de Voluntários">
+        <span class="nav-icon">🤝</span> Voluntários
+      </button>
+      <button class="nav-item" data-page="membros" aria-label="Membros">
+        <span class="nav-icon">👥</span> Membros
+      </button>
+      <button class="nav-item" data-page="comunicacao" aria-label="Comunicação WhatsApp">
+        <span class="nav-icon">💬</span> Comunicação
+        <span class="nav-badge">WA</span>
+      </button>
+
+      <div class="nav-section-label">Gestão</div>
+      <button class="nav-item" data-page="relatorios" aria-label="Relatórios">
+        <span class="nav-icon">📊</span> Relatórios
+      </button>
+      <button class="nav-item" data-page="configuracoes" aria-label="Configurações">
+        <span class="nav-icon">⚙️</span> Configurações
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="user-avatar">A</div>
+        <div>
+          <div class="user-name">Administrador</div>
+          <div class="user-role">Coordenador</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Overlay mobile -->
+  <div id="sidebar-overlay" class="sidebar-overlay" role="presentation"></div>
+
+  <!-- ── Conteúdo Principal ──────────────────────────────── -->
+  <main class="main-content" role="main">
+
+    <!-- Topbar -->
+    <header class="topbar" role="banner">
+      <button class="topbar-toggle" id="topbar-toggle" aria-label="Abrir menu">☰</button>
+      <div class="topbar-title" id="page-title-text">Dashboard<span>Visão geral do sistema</span></div>
+      <div class="topbar-actions">
+        <button class="topbar-btn" id="btn-notif" aria-label="Notificações">🔔</button>
+        <button class="topbar-btn" id="btn-refresh" aria-label="Atualizar dados">🔄</button>
+      </div>
+    </header>
+
+    <!-- ════════════════ PÁGINA: DASHBOARD ════════════════ -->
+    <section id="page-dashboard" class="page active">
+      <div class="page-header">
+        <h1 class="page-title">Bem-vindo ao SUSTEN 🙏</h1>
+        <p class="page-subtitle">Gestão transparente da sua comunidade paroquial</p>
+      </div>
+
+      <div class="welcome-banner">
+        <h2>✨ Igreja em Saída Digital</h2>
+        <p>Gerencie finanças, projetos, voluntários e comunicação em um só lugar — com transparência total para a sua comunidade.</p>
+      </div>
+
+      <!-- KPIs -->
+      <div class="kpi-grid" id="dashboard-kpis">
+        <!-- renderizado via JS -->
+      </div>
+
+      <!-- Gráfico de evolução + atividade recente -->
+      <div class="charts-grid">
+        <div class="chart-card" style="grid-column: span 2">
+          <div class="chart-title">📈 Evolução Financeira – Últimos 6 Meses</div>
+          <div class="chart-container" style="height:240px">
+            <canvas id="chart-dashboard"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.5rem">
+        <!-- Meta mensal -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🎯 Meta Mensal de Arrecadação</span>
+            <span id="meta-mensal-pct" class="text-accent fw-bold">0%</span>
+          </div>
+          <div class="progress-bar-track" style="height:14px;margin-bottom:0.6rem">
+            <div class="progress-bar-fill" id="meta-mensal-bar" style="width:0%"></div>
+          </div>
+          <div id="meta-mensal-valor" class="text-muted" style="font-size:0.82rem"></div>
+        </div>
+
+        <!-- Atividade recente -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">⚡ Atividade Recente</span>
+          </div>
+          <div class="activity-list" id="atividade-recente">
+            <!-- renderizado via JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════ PÁGINA: FINANCEIRO ══════════════ -->
+    <section id="page-financeiro" class="page">
+      <div class="page-header">
+        <h1 class="page-title">Portal da Partilha 💰</h1>
+        <p class="page-subtitle">Transparência total nas finanças da paróquia</p>
+      </div>
+
+      <!-- KPIs financeiros -->
+      <div class="kpi-grid">
+        <div class="kpi-card green">
+          <span class="kpi-icon">📥</span>
+          <div class="kpi-value text-success" id="fin-receita-mes">—</div>
+          <div class="kpi-label">Receita do Mês</div>
+        </div>
+        <div class="kpi-card red">
+          <span class="kpi-icon">📤</span>
+          <div class="kpi-value text-danger" id="fin-despesa-mes">—</div>
+          <div class="kpi-label">Despesas do Mês</div>
+        </div>
+        <div class="kpi-card purple">
+          <span class="kpi-icon">🏦</span>
+          <div class="kpi-value" id="fin-saldo-mes">—</div>
+          <div class="kpi-label">Saldo do Mês</div>
+        </div>
+        <div class="kpi-card gold">
+          <span class="kpi-icon">📅</span>
+          <div class="kpi-value text-success" id="fin-receita-ano">—</div>
+          <div class="kpi-label">Receita do Ano</div>
+        </div>
+        <div class="kpi-card red">
+          <span class="kpi-icon">📅</span>
+          <div class="kpi-value text-danger" id="fin-despesa-ano">—</div>
+          <div class="kpi-label">Despesas do Ano</div>
+        </div>
+        <div class="kpi-card blue">
+          <span class="kpi-icon">💎</span>
+          <div class="kpi-value" id="fin-saldo-ano">—</div>
+          <div class="kpi-label">Saldo Anual</div>
+        </div>
+      </div>
+
+      <!-- Gráficos -->
+      <div class="charts-grid">
+        <div class="chart-card wide">
+          <div class="chart-title">📊 Receitas × Despesas por Mês</div>
+          <div class="chart-container"><canvas id="chart-barras"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">🍩 Distribuição de Despesas</div>
+          <div class="chart-container"><canvas id="chart-rosca"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">📈 Tendência de Receitas & Despesas</div>
+          <div class="chart-container"><canvas id="chart-linha"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Lançamentos -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📋 Lançamentos</span>
+          <button class="btn btn-primary btn-sm" id="btn-novo-lancamento">+ Novo Lançamento</button>
+        </div>
+        <div class="filter-tabs">
+          <button class="filter-tab filter-lancamentos active" data-filter="todos">Todos</button>
+          <button class="filter-tab filter-lancamentos" data-filter="receita">Receitas</button>
+          <button class="filter-tab filter-lancamentos" data-filter="despesa">Despesas</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Descrição</th>
+                <th>Tipo</th>
+                <th>Categoria</th>
+                <th>Valor</th>
+                <th>Responsável</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody-lancamentos"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════ PÁGINA: METAS ═══════════════════ -->
+    <section id="page-metas" class="page">
+      <div class="page-header">
+        <h1 class="page-title">🎯 Termômetro de Metas</h1>
+        <p class="page-subtitle">Projetos em andamento – acompanhe e contribua!</p>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:1.25rem">
+        <button class="btn btn-primary" id="btn-nova-meta">+ Nova Meta</button>
+      </div>
+      <div class="metas-grid" id="metas-grid">
+        <!-- renderizado via JS -->
+      </div>
+    </section>
+
+    <!-- ════════════════ PÁGINA: DÍZIMO ══════════════════ -->
+    <section id="page-dizimo" class="page">
+      <div class="page-header">
+        <h1 class="page-title">🙏 Dízimo Digital</h1>
+        <p class="page-subtitle">Contribua com praticidade – PIX, transferência ou registro manual</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.5rem">
+        <!-- Dados PIX -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">💳 Dados para PIX / Transferência</span>
+          </div>
+          <div class="pix-container">
+            <div class="pix-qr">
+              <!-- QR Code simplificado via SVG -->
+              <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <rect width="100" height="100" fill="white"/>
+                <rect x="10" y="10" width="30" height="30" fill="none" stroke="black" stroke-width="3"/>
+                <rect x="14" y="14" width="22" height="22" fill="black"/>
+                <rect x="60" y="10" width="30" height="30" fill="none" stroke="black" stroke-width="3"/>
+                <rect x="64" y="14" width="22" height="22" fill="black"/>
+                <rect x="10" y="60" width="30" height="30" fill="none" stroke="black" stroke-width="3"/>
+                <rect x="14" y="64" width="22" height="22" fill="black"/>
+                <!-- Módulos de dados -->
+                <rect x="50" y="50" width="5" height="5" fill="black"/>
+                <rect x="60" y="50" width="5" height="5" fill="black"/>
+                <rect x="70" y="50" width="5" height="5" fill="black"/>
+                <rect x="80" y="50" width="5" height="5" fill="black"/>
+                <rect x="55" y="55" width="5" height="5" fill="black"/>
+                <rect x="65" y="55" width="5" height="5" fill="black"/>
+                <rect x="75" y="55" width="5" height="5" fill="black"/>
+                <rect x="50" y="60" width="5" height="5" fill="black"/>
+                <rect x="60" y="60" width="5" height="5" fill="black"/>
+                <rect x="80" y="60" width="5" height="5" fill="black"/>
+                <rect x="55" y="65" width="5" height="5" fill="black"/>
+                <rect x="70" y="65" width="5" height="5" fill="black"/>
+                <rect x="50" y="70" width="5" height="5" fill="black"/>
+                <rect x="60" y="70" width="5" height="5" fill="black"/>
+                <rect x="75" y="70" width="5" height="5" fill="black"/>
+                <rect x="50" y="75" width="5" height="5" fill="black"/>
+                <rect x="65" y="75" width="5" height="5" fill="black"/>
+                <rect x="80" y="75" width="5" height="5" fill="black"/>
+                <!-- Separadores -->
+                <rect x="42" y="10" width="5" height="5" fill="black"/>
+                <rect x="42" y="20" width="5" height="5" fill="black"/>
+                <rect x="42" y="30" width="5" height="5" fill="black"/>
+                <rect x="10" y="42" width="5" height="5" fill="black"/>
+                <rect x="20" y="42" width="5" height="5" fill="black"/>
+                <rect x="30" y="42" width="5" height="5" fill="black"/>
+                <rect x="50" y="42" width="5" height="5" fill="black"/>
+                <rect x="60" y="42" width="5" height="5" fill="black"/>
+                <rect x="70" y="42" width="5" height="5" fill="black"/>
+                <rect x="80" y="42" width="5" height="5" fill="black"/>
+              </svg>
+            </div>
+            <div class="pix-info">
+              <h3>✝️ Contribua com o Dízimo</h3>
+              <div style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:0.75rem">
+                <strong>Banco:</strong> <span id="pix-banco-val">—</span><br>
+                <strong>Nome:</strong> <span id="pix-nome-val">—</span><br>
+                <strong>Tipo de Chave:</strong> <span id="pix-tipo-val">—</span>
+              </div>
+              <div class="pix-key">
+                <span id="pix-chave-val">—</span>
+                <button class="copy-btn" id="pix-chave-copy">Copiar</button>
+              </div>
+              <button class="btn btn-primary btn-sm" id="btn-registrar-dizimo">📝 Registrar Contribuição</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Informações adicionais -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">💡 Como Contribuir</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:0.75rem">
+            <div style="display:flex;gap:0.75rem;align-items:flex-start">
+              <span style="font-size:1.5rem">📱</span>
+              <div>
+                <strong style="display:block;font-size:0.88rem">PIX Instantâneo</strong>
+                <span style="font-size:0.78rem;color:var(--text-muted)">Copie a chave PIX acima e realize a transferência no seu banco.</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:0.75rem;align-items:flex-start">
+              <span style="font-size:1.5rem">💳</span>
+              <div>
+                <strong style="display:block;font-size:0.88rem">Transferência Bancária</strong>
+                <span style="font-size:0.78rem;color:var(--text-muted)">Use os dados bancários para transferência programada.</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:0.75rem;align-items:flex-start">
+              <span style="font-size:1.5rem">🏠</span>
+              <div>
+                <strong style="display:block;font-size:0.88rem">Nas Missas</strong>
+                <span style="font-size:0.78rem;color:var(--text-muted)">Coleta presencial durante as celebrações.</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:0.75rem;align-items:flex-start">
+              <span style="font-size:1.5rem">📝</span>
+              <div>
+                <strong style="display:block;font-size:0.88rem">Registro Manual</strong>
+                <span style="font-size:0.78rem;color:var(--text-muted)">O coordenador pode registrar contribuições manualmente.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+          <div style="background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.3);border-radius:var(--radius-sm);padding:0.75rem;font-size:0.8rem;color:var(--text-secondary)">
+            🙏 <em>"Cada um contribua segundo propôs no seu coração; não com tristeza, ou por necessidade; porque Deus ama ao que dá com alegria."</em><br>
+            <span style="color:var(--text-muted);font-size:0.72rem">– 2 Coríntios 9:7</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela de dizimistas -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🙏 Dizimistas e Colaboradores</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Categoria</th>
+                <th>Status</th>
+                <th>Último Dízimo</th>
+                <th>Valor</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-dizimistas"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════ PÁGINA: VOLUNTÁRIOS ════════════ -->
+    <section id="page-voluntarios" class="page">
+      <div class="page-header">
+        <h1 class="page-title">🤝 Banco de Voluntários</h1>
+        <p class="page-subtitle">A maior riqueza da Igreja são as pessoas</p>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1rem">
+        <span class="stat-pill" id="vol-count">0 voluntários</span>
+        <button class="btn btn-primary" id="btn-novo-voluntario">+ Novo Voluntário</button>
+      </div>
+
+      <div class="search-bar">
+        <span class="search-bar-icon">🔍</span>
+        <input type="search" id="vol-search" placeholder="Buscar por nome, profissão ou habilidade…" />
+      </div>
+
+      <div class="filter-tabs">
+        <button class="filter-tab filter-voluntarios active" data-filter="todos">Todos</button>
+        <button class="filter-tab filter-voluntarios" data-filter="jurídico">Jurídico</button>
+        <button class="filter-tab filter-voluntarios" data-filter="saúde">Saúde</button>
+        <button class="filter-tab filter-voluntarios" data-filter="educação">Educação</button>
+        <button class="filter-tab filter-voluntarios" data-filter="manutenção">Manutenção</button>
+        <button class="filter-tab filter-voluntarios" data-filter="comunicação">Comunicação</button>
+      </div>
+
+      <div class="vol-grid" id="vol-grid">
+        <!-- renderizado via JS -->
+      </div>
+    </section>
+
+    <!-- ════════════════ PÁGINA: COMUNICAÇÃO ════════════ -->
+    <section id="page-comunicacao" class="page">
+      <div class="page-header">
+        <h1 class="page-title">💬 Comunicação Paroquial</h1>
+        <p class="page-subtitle">Mensagens personalizadas via WhatsApp com um clique</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">
+
+        <!-- Painel esquerdo: configuração -->
+        <div>
+          <div class="card" style="margin-bottom:1.25rem">
+            <div class="card-header"><span class="card-title">👤 Destinatário</span></div>
+            <div class="form-group">
+              <label class="form-label" for="wa-destinatario">Selecionar Membro</label>
+              <select class="form-control" id="wa-destinatario">
+                <option value="">-- Selecione --</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:1.25rem">
+            <div class="card-header"><span class="card-title">📝 Modelo de Mensagem</span></div>
+            <div id="template-list"></div>
+          </div>
+
+          <!-- Variáveis dinâmicas -->
+          <div class="card" style="margin-bottom:1.25rem" id="vars-card">
+            <div class="card-header"><span class="card-title">🔧 Personalizar Mensagem</span></div>
+            <div class="form-group">
+              <label class="form-label" for="wa-valor">Valor do Dízimo (R$)</label>
+              <input type="number" class="form-control" id="wa-valor" placeholder="Ex: 150,00" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="wa-evento">Nome do Evento</label>
+              <input type="text" class="form-control" id="wa-evento" placeholder="Ex: Retiro de Casais" />
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="wa-data-evento">Data</label>
+                <input type="date" class="form-control" id="wa-data-evento" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="wa-hora">Hora</label>
+                <input type="time" class="form-control" id="wa-hora" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="wa-local">Local</label>
+              <input type="text" class="form-control" id="wa-local" placeholder="Ex: Salão Paroquial" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="wa-meta-nome">Nome da Meta</label>
+              <input type="text" class="form-control" id="wa-meta-nome" placeholder="Ex: Sistema de Som" />
+            </div>
+          </div>
+
+          <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
+            <button class="btn btn-whatsapp flex-1" id="btn-enviar-wa">💬 Enviar via WhatsApp</button>
+            <button class="btn btn-outline" id="btn-enviar-todos">📢 Enviar para Todos</button>
+          </div>
+        </div>
+
+        <!-- Painel direito: preview -->
+        <div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">👁️ Preview da Mensagem</span></div>
+            <div class="whatsapp-preview">
+              <div class="whatsapp-header">
+                <div class="wa-avatar">✝️</div>
+                <div>
+                  <div class="wa-name">Paróquia N. Sra. do Amparo</div>
+                  <div class="wa-status">● online</div>
+                </div>
+              </div>
+              <div class="wa-bubble hidden" id="wa-preview-bubble">
+                <div id="wa-preview-text" style="white-space:pre-line;line-height:1.5"></div>
+                <div class="wa-time"><span id="wa-preview-time">12:00</span> <span class="wa-ticks">✓✓</span></div>
+              </div>
+              <div id="wa-empty-state" style="text-align:center;padding:2rem;color:rgba(255,255,255,0.4);font-size:0.85rem">
+                👆 Selecione um destinatário e um modelo para ver o preview
+              </div>
+            </div>
+          </div>
+
+          <!-- Dicas -->
+          <div class="card mt-2">
+            <div class="card-header"><span class="card-title">💡 Dicas de Uso</span></div>
+            <div style="display:flex;flex-direction:column;gap:0.6rem;font-size:0.82rem;color:var(--text-secondary)">
+              <div>🎯 <strong>Personalize:</strong> Os campos acima substituem automaticamente as variáveis na mensagem.</div>
+              <div>📱 <strong>WhatsApp Web:</strong> O botão abre o app com o texto já preenchido.</div>
+              <div>⚡ <strong>Gatilhos automáticos:</strong> Novos membros recebem boas-vindas automaticamente.</div>
+              <div>🔒 <strong>Privacidade:</strong> Os números são tratados apenas para contato pastoral.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════ PÁGINA: MEMBROS ════════════════ -->
+    <section id="page-membros" class="page">
+      <div class="page-header">
+        <h1 class="page-title">👥 Gestão de Membros</h1>
+        <p class="page-subtitle">Dizimistas, colaboradores e novos membros</p>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1rem">
+        <div class="filter-tabs" style="margin-bottom:0">
+          <button class="filter-tab filter-membros active" data-filter="todos">Todos</button>
+          <button class="filter-tab filter-membros" data-filter="ativo">Ativos</button>
+          <button class="filter-tab filter-membros" data-filter="inativo">Inativos</button>
+          <button class="filter-tab filter-membros" data-filter="dizimista">Dizimistas</button>
+          <button class="filter-tab filter-membros" data-filter="novo membro">Novos</button>
+        </div>
+        <button class="btn btn-primary" id="btn-novo-membro">+ Novo Membro</button>
+      </div>
+
+      <div class="search-bar">
+        <span class="search-bar-icon">🔍</span>
+        <input type="search" id="mem-search" placeholder="Buscar por nome…" />
+      </div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Categoria</th>
+                <th>Status</th>
+                <th>Último Dízimo</th>
+                <th>Valor</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-membros"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════ PÁGINA: RELATÓRIOS ════════════ -->
+    <section id="page-relatorios" class="page">
+      <div class="page-header">
+        <h1 class="page-title">📊 Relatórios e Exportações</h1>
+        <p class="page-subtitle">Exporte dados em CSV compatível com Excel / Google Sheets</p>
+      </div>
+
+      <div class="report-grid">
+        <div class="report-card" data-export="financeiro" onclick="exportarRelatorio('financeiro')">
+          <span class="report-icon">💰</span>
+          <div class="report-title">Relatório Financeiro</div>
+          <div class="report-desc">Todos os lançamentos de receitas e despesas</div>
+          <button class="btn btn-primary btn-sm mt-2" data-export="financeiro">📥 Exportar CSV</button>
+        </div>
+        <div class="report-card" onclick="exportarRelatorio('membros')">
+          <span class="report-icon">👥</span>
+          <div class="report-title">Lista de Membros</div>
+          <div class="report-desc">Dizimistas, colaboradores e novos membros</div>
+          <button class="btn btn-primary btn-sm mt-2" data-export="membros">📥 Exportar CSV</button>
+        </div>
+        <div class="report-card" onclick="exportarRelatorio('voluntarios')">
+          <span class="report-icon">🤝</span>
+          <div class="report-title">Banco de Voluntários</div>
+          <div class="report-desc">Todos os voluntários cadastrados e seus talentos</div>
+          <button class="btn btn-primary btn-sm mt-2" data-export="voluntarios">📥 Exportar CSV</button>
+        </div>
+        <div class="report-card" onclick="exportarRelatorio('metas')">
+          <span class="report-icon">🎯</span>
+          <div class="report-title">Metas e Projetos</div>
+          <div class="report-desc">Status de todos os projetos e metas de arrecadação</div>
+          <button class="btn btn-primary btn-sm mt-2" data-export="metas">📥 Exportar CSV</button>
+        </div>
+      </div>
+
+      <div class="card mt-3">
+        <div class="card-header"><span class="card-title">📋 Notas sobre os Relatórios</span></div>
+        <div style="font-size:0.85rem;color:var(--text-secondary);line-height:1.8">
+          <p>• Os arquivos CSV são exportados com codificação UTF-8 e separador ponto-e-vírgula (compatível com Excel brasileiro).</p>
+          <p>• Para abrir no Google Sheets: <em>Arquivo → Importar → selecionar arquivo → Separador: ponto e vírgula</em>.</p>
+          <p>• Os dados exportados refletem o estado atual do sistema, incluindo alterações não salvas no servidor.</p>
+          <p>• Para relatórios de auditoria completos, configure a integração com o Google Apps Script.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════ PÁGINA: CONFIGURAÇÕES ══════════ -->
+    <section id="page-configuracoes" class="page">
+      <div class="page-header">
+        <h1 class="page-title">⚙️ Configurações</h1>
+        <p class="page-subtitle">Personalize o sistema para a sua paróquia</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">
+        <div>
+          <!-- Dados da Paróquia -->
+          <div class="settings-section">
+            <div class="settings-title">🏛️ Dados da Paróquia</div>
+            <div class="card">
+              <div class="form-group">
+                <label class="form-label" for="cfg-nome">Nome da Paróquia</label>
+                <input type="text" class="form-control" id="cfg-nome" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="cfg-endereco">Endereço</label>
+                <input type="text" class="form-control" id="cfg-endereco" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="cfg-telefone">Telefone / WhatsApp</label>
+                <input type="text" class="form-control" id="cfg-telefone" placeholder="(00) 00000-0000" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="cfg-whatsapp">Número do Administrador (com DDI)</label>
+                <input type="text" class="form-control" id="cfg-whatsapp" placeholder="5585999990000" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Dados PIX -->
+          <div class="settings-section">
+            <div class="settings-title">💳 Dados PIX / Transferência</div>
+            <div class="card">
+              <div class="form-group">
+                <label class="form-label" for="cfg-pix-banco">Banco</label>
+                <input type="text" class="form-control" id="cfg-pix-banco" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="cfg-pix-nome">Nome do Titular</label>
+                <input type="text" class="form-control" id="cfg-pix-nome" />
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="cfg-pix-tipo">Tipo de Chave</label>
+                  <select class="form-control" id="cfg-pix-tipo">
+                    <option>E-mail</option>
+                    <option>CPF/CNPJ</option>
+                    <option>Telefone</option>
+                    <option>Chave Aleatória</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="cfg-pix-chave">Chave PIX</label>
+                  <input type="text" class="form-control" id="cfg-pix-chave" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <!-- Integração Apps Script -->
+          <div class="settings-section">
+            <div class="settings-title">🔗 Integração Google Apps Script</div>
+            <div class="card">
+              <div style="background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.3);border-radius:var(--radius-sm);padding:0.9rem;margin-bottom:1rem;font-size:0.82rem;color:var(--text-secondary)">
+                ℹ️ Para ativar a sincronização com Google Sheets, publique o <code>code.gs</code> como Web App e cole a URL abaixo.
+              </div>
+              <div class="form-group">
+                <label class="form-label">URL do Web App (Apps Script)</label>
+                <input type="url" class="form-control" id="cfg-apps-script-url" placeholder="https://script.google.com/macros/s/…/exec" />
+              </div>
+              <div class="divider"></div>
+              <div style="font-size:0.8rem;color:var(--text-muted);line-height:1.7">
+                <strong style="color:var(--text-secondary)">Passos para configurar:</strong><br>
+                1. Abra o Google Sheets e vá em <em>Extensões → Apps Script</em><br>
+                2. Cole o conteúdo do arquivo <code>code.gs</code><br>
+                3. Clique em <em>Implantar → Novo Implantação → Web App</em><br>
+                4. Defina acesso como <em>"Qualquer pessoa"</em> (público) ou <em>"Usuários da organização"</em><br>
+                5. Copie a URL gerada e cole acima
+              </div>
+            </div>
+          </div>
+
+          <!-- Preferências do Sistema -->
+          <div class="settings-section">
+            <div class="settings-title">🎨 Preferências do Sistema</div>
+            <div class="settings-item">
+              <div class="settings-item-left">
+                <span class="settings-item-icon">🔔</span>
+                <div>
+                  <div class="settings-item-text">Notificações de Dízimo</div>
+                  <div class="settings-item-sub">Alertar quando dizimistas estiverem inativos</div>
+                </div>
+              </div>
+              <label class="toggle"><input type="checkbox" checked /><span class="toggle-slider"></span></label>
+            </div>
+            <div class="settings-item">
+              <div class="settings-item-left">
+                <span class="settings-item-icon">💬</span>
+                <div>
+                  <div class="settings-item-text">Boas-vindas Automáticas</div>
+                  <div class="settings-item-sub">Enviar WhatsApp ao cadastrar novo membro</div>
+                </div>
+              </div>
+              <label class="toggle"><input type="checkbox" checked /><span class="toggle-slider"></span></label>
+            </div>
+            <div class="settings-item">
+              <div class="settings-item-left">
+                <span class="settings-item-icon">🌙</span>
+                <div>
+                  <div class="settings-item-text">Modo Escuro</div>
+                  <div class="settings-item-sub">Tema padrão do sistema</div>
+                </div>
+              </div>
+              <label class="toggle"><input type="checkbox" checked /><span class="toggle-slider"></span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;margin-top:1rem">
+        <button class="btn btn-primary btn-lg" id="btn-salvar-config">💾 Salvar Configurações</button>
+      </div>
+    </section>
+
+  </main>
+</div><!-- /app -->
+
+<!-- ═══════════════ MODAIS ══════════════════════════════════ -->
+
+<!-- Modal: Novo Lançamento -->
+<div class="modal-overlay" id="modal-lancamento" role="dialog" aria-modal="true" aria-labelledby="modal-lancamento-title">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-lancamento-title">💰 Novo Lançamento</span>
+      <button class="modal-close" aria-label="Fechar">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="lanc-descricao">Descrição *</label>
+      <input type="text" class="form-control" id="lanc-descricao" placeholder="Ex: Coleta Dominical" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="lanc-tipo">Tipo *</label>
+        <select class="form-control" id="lanc-tipo">
+          <option value="receita">Receita</option>
+          <option value="despesa">Despesa</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="lanc-valor">Valor (R$) *</label>
+        <input type="number" class="form-control" id="lanc-valor" placeholder="0,00" step="0.01" min="0" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="lanc-categoria">Categoria</label>
+        <select class="form-control" id="lanc-categoria">
+          <option>Dízimo</option>
+          <option>Coleta</option>
+          <option>Doação</option>
+          <option>Aluguel</option>
+          <option>Obras Sociais</option>
+          <option>Manutenção</option>
+          <option>Utilidades</option>
+          <option>Liturgia</option>
+          <option>Administrativo</option>
+          <option>Outros</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="lanc-data">Data *</label>
+        <input type="date" class="form-control" id="lanc-data" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="lanc-responsavel">Responsável</label>
+      <input type="text" class="form-control" id="lanc-responsavel" placeholder="Ex: Pe. João" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal>Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar-lancamento">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Nova Meta -->
+<div class="modal-overlay" id="modal-meta" role="dialog" aria-modal="true" aria-labelledby="modal-meta-title">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-meta-title">🎯 Nova Meta / Projeto</span>
+      <button class="modal-close" aria-label="Fechar">✕</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="meta-emoji">Emoji</label>
+        <input type="text" class="form-control" id="meta-emoji" value="🎯" maxlength="2" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="meta-status-sel">Status</label>
+        <select class="form-control" id="meta-status-sel">
+          <option value="ativa">Em Andamento</option>
+          <option value="urgente">Urgente</option>
+          <option value="concluida">Concluída</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="meta-titulo">Título do Projeto *</label>
+      <input type="text" class="form-control" id="meta-titulo" placeholder="Ex: Renovação do Sistema de Som" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="meta-descricao">Descrição</label>
+      <textarea class="form-control" id="meta-descricao" placeholder="Descreva o objetivo do projeto…"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="meta-valor-total">Valor da Meta (R$) *</label>
+        <input type="number" class="form-control" id="meta-valor-total" placeholder="0,00" step="0.01" min="0" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="meta-arrecadado">Já Arrecadado (R$)</label>
+        <input type="number" class="form-control" id="meta-arrecadado" placeholder="0,00" step="0.01" min="0" value="0" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="meta-prazo">Prazo *</label>
+      <input type="date" class="form-control" id="meta-prazo" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal>Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar-meta">💾 Salvar Meta</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Novo Voluntário -->
+<div class="modal-overlay" id="modal-voluntario" role="dialog" aria-modal="true" aria-labelledby="modal-vol-title">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-vol-title">🤝 Novo Voluntário</span>
+      <button class="modal-close" aria-label="Fechar">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="vol-nome">Nome Completo *</label>
+      <input type="text" class="form-control" id="vol-nome" placeholder="Ex: Maria da Silva" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="vol-profissao">Profissão / Área *</label>
+      <input type="text" class="form-control" id="vol-profissao" placeholder="Ex: Engenheira Civil" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="vol-tags-input">Habilidades / Tags</label>
+      <input type="text" class="form-control" id="vol-tags-input" placeholder="Ex: Obras, Projetos, Orçamentos (separar por vírgula)" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="vol-telefone">WhatsApp (com DDI)</label>
+      <input type="tel" class="form-control" id="vol-telefone" placeholder="5585999990000" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="vol-disponibilidade">Disponibilidade</label>
+      <input type="text" class="form-control" id="vol-disponibilidade" placeholder="Ex: Fins de semana" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal>Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar-voluntario">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Novo Membro -->
+<div class="modal-overlay" id="modal-membro" role="dialog" aria-modal="true" aria-labelledby="modal-mem-title">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-mem-title">👤 Novo Membro</span>
+      <button class="modal-close" aria-label="Fechar">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="mem-nome">Nome Completo *</label>
+      <input type="text" class="form-control" id="mem-nome" placeholder="Ex: João da Silva" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="mem-telefone">WhatsApp (com DDI)</label>
+      <input type="tel" class="form-control" id="mem-telefone" placeholder="5585999990000" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="mem-categoria">Categoria</label>
+        <select class="form-control" id="mem-categoria">
+          <option>Dizimista</option>
+          <option>Colaborador</option>
+          <option>Novo Membro</option>
+          <option>Visitante</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="mem-status">Status</label>
+        <select class="form-control" id="mem-status">
+          <option value="ativo">Ativo</option>
+          <option value="inativo">Inativo</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal>Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar-membro">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Registrar Dízimo -->
+<div class="modal-overlay" id="modal-dizimo-reg" role="dialog" aria-modal="true" aria-labelledby="modal-dizimo-title">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-dizimo-title">🙏 Registrar Contribuição</span>
+      <button class="modal-close" aria-label="Fechar">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="dizimo-nome">Nome do Contribuinte *</label>
+      <input type="text" class="form-control" id="dizimo-nome" placeholder="Ex: Maria Santos" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="dizimo-valor">Valor (R$) *</label>
+        <input type="number" class="form-control" id="dizimo-valor" placeholder="0,00" step="0.01" min="0" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="dizimo-data">Data *</label>
+        <input type="date" class="form-control" id="dizimo-data" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="dizimo-obs">Observação</label>
+      <input type="text" class="form-control" id="dizimo-obs" placeholder="Ex: Referente ao mês de Abril" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal>Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar-dizimo">💾 Registrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="js/api.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
