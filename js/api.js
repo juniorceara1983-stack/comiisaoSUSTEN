@@ -180,7 +180,7 @@ const DEMO_DATA = {
       id: 'dizimo-pendente',
       titulo: '💌 Lembrete Pastoral de Dízimo',
       emoji: '💌',
-      texto: `Olá, {NOME}! 🌻\n\nEstávamos com saudades de você por aqui! 😊\n\nNotamos que seu dízimo dos últimos meses ainda não foi registado. Sabemos que a vida é corrida, mas sua contribuição faz uma enorme diferença na nossa comunidade.\n\n💳 Se precisar de ajuda, entre em contato conosco.\n\n_Com carinho, Equipe Pastoral_`
+      texto: `Olá, {NOME}! 🌻\n\nEstávamos com saudades de você por aqui! 😊\n\nNotamos que seu dízimo dos últimos meses ainda não foi registrado. Sabemos que a vida é corrida, mas sua contribuição faz uma enorme diferença na nossa comunidade.\n\n💳 Se precisar de ajuda, entre em contato conosco.\n\n_Com carinho, Equipe Pastoral_`
     },
     {
       id: 'meta-atingida',

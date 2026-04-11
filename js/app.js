@@ -35,7 +35,12 @@ const toast = (msg, tipo = 'info', dur = 4000) => {
   const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
   const el = document.createElement('div');
   el.className = `toast ${tipo}`;
-  el.innerHTML = `<span>${icons[tipo]}</span><span>${msg}</span>`;
+  const iconEl = document.createElement('span');
+  iconEl.textContent = icons[tipo] || '';
+  const msgEl = document.createElement('span');
+  msgEl.textContent = msg;
+  el.appendChild(iconEl);
+  el.appendChild(msgEl);
   $('toast-container').appendChild(el);
   setTimeout(() => {
     el.style.animation = 'slideOutRight 0.3s ease forwards';
@@ -680,7 +685,12 @@ const atualizarPreviewWA = () => {
 
   const preview = $('wa-preview-text');
   if (preview) {
-    preview.innerHTML = txt
+    const escaped = txt
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+    preview.innerHTML = escaped
       .replace(/\n/g, '<br>')
       .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
       .replace(/_(.*?)_/g, '<em>$1</em>');

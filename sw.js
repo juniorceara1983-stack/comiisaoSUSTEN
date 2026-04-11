@@ -44,7 +44,10 @@ self.addEventListener('fetch', event => {
 
   // Ignorar requisições não-GET e requisições ao Apps Script
   if (request.method !== 'GET') return;
-  if (request.url.includes('script.google.com')) return;
+  try {
+    const reqUrl = new URL(request.url);
+    if (reqUrl.hostname === 'script.google.com') return;
+  } catch (_) { return; }
 
   event.respondWith(
     fetch(request)
