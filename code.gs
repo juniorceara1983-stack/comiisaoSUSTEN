@@ -697,7 +697,11 @@ function addConselhoEconomico(data) {
   _garantirCabecalho(SHEETS.CONSELHO_ECONOMICO, _CABECALHO_CONSELHO);
   const sh = SH(SHEETS.CONSELHO_ECONOMICO);
   const id = Date.now();
-  // Assinatura digital interna: hash SHA-256 do conteúdo + timestamp + e-mail
+  // Assinatura digital interna (auditável): hash SHA-256 do conteúdo da ata
+  // + timestamp + e-mail do usuário que registrou. O e-mail é parte
+  // intencional do hash para fins de rastreio canônico (cân. 1284 §2, 7°);
+  // qualquer alteração subsequente por outro usuário gera novo hash, o que
+  // torna evidente a quebra de integridade da ata original.
   const conteudo = `${id}|${data.data}|${data.tipo}|${data.pauta}|${data.deliberacoes}|${new Date().toISOString()}|${Session.getEffectiveUser().getEmail()}`;
   const hash = _sha256(conteudo);
   sh.appendRow([id, data.data, data.tipo || 'Reunião',

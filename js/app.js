@@ -1303,27 +1303,32 @@ const _diasDePascoa = (ano) => {
 const detectarTempoLiturgico = (hoje = new Date()) => {
   const ano    = hoje.getFullYear();
   const pascoa = _diasDePascoa(ano);
-  const dia = (d) => Math.floor(d.getTime() / 86400000);
-  const t = dia(hoje);
+  const daysSinceEpoch = (d) => Math.floor(d.getTime() / 86400000);
+  const t = daysSinceEpoch(hoje);
 
   // Quarta-feira de Cinzas = Páscoa - 46 dias
-  const cinzas = dia(pascoa) - 46;
+  const cinzas = daysSinceEpoch(pascoa) - 46;
   // Tríduo Pascal: quinta-feira santa - sábado santo
-  const tridouIni = dia(pascoa) - 3;
+  const tridouIni = daysSinceEpoch(pascoa) - 3;
   // Pentecostes = Páscoa + 49 dias
-  const pentecostes = dia(pascoa) + 49;
-  // Advento = 4º domingo antes de 25/dez
-  const natal = dia(new Date(ano, 11, 25));
+  const pentecostes = daysSinceEpoch(pascoa) + 49;
+  // Advento: começa no 4º domingo antes de 25/dez
+  const natal = daysSinceEpoch(new Date(ano, 11, 25));
   const dDoNatal = new Date(ano, 11, 25).getDay(); // 0=dom..6=sáb
+  // Advento: começa no 4º domingo antes de 25/dez. Calcula-se em dias
+  // contados a partir de 25/dez subtraindo: 28 dias se 25/dez for domingo
+  // (4 semanas exatas), ou (21 + diaDaSemana) caso contrário (3 semanas
+  // completas mais o número de dias necessários para chegar ao domingo
+  // anterior).
   const adventoIni = natal - (dDoNatal === 0 ? 28 : (21 + dDoNatal));
   // Natal: 25/dez até 6/jan (Epifania) ou Batismo do Senhor
-  const epifania = dia(new Date(ano + 1, 0, 6));
+  const epifania = daysSinceEpoch(new Date(ano + 1, 0, 6));
 
   if (t >= adventoIni && t < natal) return { nome: 'Advento', cor: '#6c3fc5' };
-  if (t >= natal || t <= dia(new Date(ano, 0, 13))) return { nome: 'Natal', cor: '#f5a623' };
+  if (t >= natal || t <= daysSinceEpoch(new Date(ano, 0, 13))) return { nome: 'Natal', cor: '#f5a623' };
   if (t >= cinzas && t < tridouIni) return { nome: 'Quaresma', cor: '#9b59b6' };
-  if (t >= tridouIni && t < dia(pascoa)) return { nome: 'Tríduo Pascal', cor: '#7f1d1d' };
-  if (t >= dia(pascoa) && t <= pentecostes) return { nome: 'Páscoa', cor: '#27ae60' };
+  if (t >= tridouIni && t < daysSinceEpoch(pascoa)) return { nome: 'Tríduo Pascal', cor: '#7f1d1d' };
+  if (t >= daysSinceEpoch(pascoa) && t <= pentecostes) return { nome: 'Páscoa', cor: '#27ae60' };
   return { nome: 'Tempo Comum', cor: '#27ae60' };
 };
 
