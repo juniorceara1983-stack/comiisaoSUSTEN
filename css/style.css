@@ -859,3 +859,47 @@ textarea.form-control { resize: vertical; min-height: 90px; }
 /* ─── Ícone animado ──────────────────────────────── */
 .spin { animation: spin 1.2s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Banda do tempo litúrgico ───────────────────── */
+.liturgical-band {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.3rem 0.7rem; border-radius: 999px;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em;
+  color: #fff; background: var(--primary);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset;
+  white-space: nowrap;
+}
+
+/* ─── Cartão de versículo (Dimensão Religiosa) ──── */
+.versiculo-card {
+  display: flex; align-items: center; gap: 0.9rem;
+  background: linear-gradient(135deg, rgba(108,63,197,0.18), rgba(245,166,35,0.10));
+  border: 1px solid rgba(245,166,35,0.25);
+  border-radius: var(--radius);
+  padding: 1rem 1.2rem; margin-bottom: 1.25rem;
+  box-shadow: var(--shadow);
+}
+.versiculo-card .versiculo-icon { font-size: 1.6rem; }
+.versiculo-card .versiculo-content { flex: 1; line-height: 1.55; color: var(--text-primary); }
+.versiculo-card .versiculo-content em { color: var(--text-primary); font-style: italic; }
+.versiculo-ref {
+  display: block; margin-top: 0.35rem; font-size: 0.78rem;
+  color: var(--accent); font-weight: 700;
+}
+
+/* ─── Rótulo central do gauge ────────────────────── */
+.gauge-center {
+  position: absolute; left: 0; right: 0; top: 60%;
+  text-align: center; font-weight: 800; font-size: 1.4rem;
+  color: var(--accent); pointer-events: none;
+}
+
+/* ─── Badge de hash (assinatura digital de atas) ── */
+.hash-badge {
+  font-family: 'Lato', monospace;
+  font-size: 0.72rem; padding: 0.15rem 0.45rem;
+  background: rgba(108,63,197,0.18);
+  border: 1px solid rgba(108,63,197,0.3);
+  border-radius: var(--radius-xs);
+  color: var(--primary-light);
+}

@@ -80,6 +80,23 @@
         <span class="nav-badge">WA</span>
       </button>
 
+      <div class="nav-section-label">Pastoral</div>
+      <button class="nav-item" data-page="caridade" aria-label="Impacto da Caridade">
+        <span class="nav-icon">💛</span> Caridade
+      </button>
+      <button class="nav-item" data-page="evangelizacao" aria-label="Termômetro Missionário">
+        <span class="nav-icon">🌍</span> Evangelização
+      </button>
+      <button class="nav-item" data-page="conselho" aria-label="Conselho Econômico">
+        <span class="nav-icon">⚖️</span> Conselho Econômico
+      </button>
+      <button class="nav-item" data-page="patrimonio" aria-label="Patrimônio">
+        <span class="nav-icon">🏛️</span> Patrimônio
+      </button>
+      <button class="nav-item" data-page="transparencia" aria-label="Portal Público de Transparência">
+        <span class="nav-icon">🔎</span> Transparência Pública
+      </button>
+
       <div class="nav-section-label">Gestão</div>
       <button class="nav-item" data-page="relatorios" aria-label="Relatórios">
         <span class="nav-icon">📊</span> Relatórios
@@ -111,6 +128,7 @@
       <button class="topbar-toggle" id="topbar-toggle" aria-label="Abrir menu">☰</button>
       <div class="topbar-title" id="page-title-text">Dashboard<span>Visão geral do sistema</span></div>
       <div class="topbar-actions">
+        <span id="liturgical-band" class="liturgical-band" title="Tempo litúrgico atual" aria-label="Tempo litúrgico atual"></span>
         <button class="topbar-btn" id="btn-notif" aria-label="Notificações">🔔</button>
         <button class="topbar-btn" id="btn-refresh" aria-label="Atualizar dados">🔄</button>
       </div>
@@ -272,8 +290,18 @@
     <!-- ════════════════ PÁGINA: DÍZIMO ══════════════════ -->
     <section id="page-dizimo" class="page">
       <div class="page-header">
-        <h1 class="page-title">🙏 Dízimo Digital</h1>
-        <p class="page-subtitle">Contribua com praticidade – PIX, transferência ou registro manual</p>
+        <h1 class="page-title">🙏 Dízimo Digital — Minha Oferta de Gratidão</h1>
+        <p class="page-subtitle">O dízimo é compromisso de fé, não taxa. Religiosa, eclesial, missionária e caritativa (Doc. 106 CNBB).</p>
+      </div>
+
+      <!-- Versículo rotativo (Dimensão Religiosa) -->
+      <div class="versiculo-card" id="versiculo-card" role="complementary" aria-label="Versículo bíblico do dia">
+        <div class="versiculo-icon">✝️</div>
+        <div class="versiculo-content">
+          <em id="versiculo-texto">…</em>
+          <span id="versiculo-ref" class="versiculo-ref"></span>
+        </div>
+        <button class="copy-btn" id="versiculo-trocar" type="button" aria-label="Trocar versículo">↻</button>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.5rem">
@@ -538,6 +566,296 @@
       </div>
     </section>
 
+    <!-- ════════════════ PÁGINA: CARIDADE (Laudato Si' / Impacto Social) ════════════ -->
+    <section id="page-caridade" class="page">
+      <div class="page-header">
+        <h1 class="page-title">💛 Impacto da Caridade — Laudato Si'</h1>
+        <p class="page-subtitle">"Igreja pobre para os pobres" (EG 198). As ofertas para um fim caritativo não podem ser desviadas (cân. 1267 §3).</p>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card gold">
+          <span class="kpi-icon">👨‍👩‍👧‍👦</span>
+          <div class="kpi-value text-accent" id="car-familias-mes">—</div>
+          <div class="kpi-label">Famílias Assistidas (mês)</div>
+        </div>
+        <div class="kpi-card purple">
+          <span class="kpi-icon">🏠</span>
+          <div class="kpi-value" id="car-familias-ano">—</div>
+          <div class="kpi-label">Famílias Assistidas (ano)</div>
+        </div>
+        <div class="kpi-card green">
+          <span class="kpi-icon">🍞</span>
+          <div class="kpi-value text-success" id="car-kg-alimentos">—</div>
+          <div class="kpi-label">Quilos de Alimentos (ano)</div>
+        </div>
+        <div class="kpi-card blue">
+          <span class="kpi-icon">💸</span>
+          <div class="kpi-value" id="car-total-ano">—</div>
+          <div class="kpi-label">Total destinado (ano)</div>
+        </div>
+        <div class="kpi-card red">
+          <span class="kpi-icon">📊</span>
+          <div class="kpi-value" id="car-pct-pobres">—</div>
+          <div class="kpi-label">% da Receita aos Pobres</div>
+          <div class="kpi-trend text-muted" id="car-pct-meta">Meta EG 198: ≥10%</div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card wide">
+          <div class="chart-title">🍩 Distribuição da Caridade por Categoria</div>
+          <div class="chart-container"><canvas id="chart-caridade"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">🎯 Meta de Partilha aos Pobres (EG 198)</div>
+          <div class="chart-container" style="position:relative;height:220px">
+            <canvas id="gauge-caridade"></canvas>
+            <div class="gauge-center" id="gauge-caridade-label">0%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📒 Movimentações do Fundo Caritativo</span>
+          <button class="btn btn-primary btn-sm" id="btn-novo-caritativo">+ Novo Lançamento</button>
+        </div>
+        <div class="alert-info" style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.6rem">
+          🔒 Observações são confidenciais (segredo pastoral / LGPD) — exibidas apenas mascaradas neste portal.
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Tipo</th>
+                <th>Origem/Destino</th>
+                <th>Categoria</th>
+                <th>Famílias</th>
+                <th>Kg Alim.</th>
+                <th>Valor</th>
+                <th>Resp.</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody-caritativo"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════ PÁGINA: EVANGELIZAÇÃO ════════════════════ -->
+    <section id="page-evangelizacao" class="page">
+      <div class="page-header">
+        <h1 class="page-title">🌍 Termômetro Missionário</h1>
+        <p class="page-subtitle">Metas evangelizadoras (Doc. 105 CNBB / EG) e partilha "ad extra" com diocese e missões.</p>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card purple">
+          <span class="kpi-icon">🌐</span>
+          <div class="kpi-value text-accent" id="miss-partilha-valor">—</div>
+          <div class="kpi-label">Partilha Diocesana / Missões (ano)</div>
+        </div>
+        <div class="kpi-card gold">
+          <span class="kpi-icon">📈</span>
+          <div class="kpi-value" id="miss-pct-partilha">—</div>
+          <div class="kpi-label">% da Receita partilhada</div>
+          <div class="kpi-trend text-muted" id="miss-pct-meta">Meta diocesana</div>
+        </div>
+        <div class="kpi-card green">
+          <span class="kpi-icon">🎯</span>
+          <div class="kpi-value" id="miss-num-metas">—</div>
+          <div class="kpi-label">Metas Missionárias Ativas</div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-title">🎯 Meta de Partilha (Diocese / Missões)</div>
+          <div class="chart-container" style="position:relative;height:220px">
+            <canvas id="gauge-missionario"></canvas>
+            <div class="gauge-center" id="gauge-missionario-label">0%</div>
+          </div>
+        </div>
+        <div class="chart-card wide">
+          <div class="chart-title">📋 Categorias consideradas "ad extra"</div>
+          <div id="categorias-ad-extra" style="display:flex;flex-wrap:wrap;gap:0.5rem;padding:0.5rem"></div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;margin-bottom:1rem">
+        <button class="btn btn-primary" id="btn-nova-meta-evang">+ Nova Meta Evangelizadora</button>
+      </div>
+
+      <div class="metas-grid" id="metas-evang-grid"></div>
+    </section>
+
+    <!-- ════════════════ PÁGINA: CONSELHO ECONÔMICO (CAE) ═════════ -->
+    <section id="page-conselho" class="page">
+      <div class="page-header">
+        <h1 class="page-title">⚖️ Conselho de Assuntos Econômicos</h1>
+        <p class="page-subtitle">Atas, pautas e deliberações (cân. 537 / 1284 §2, 7°). Cada ata recebe assinatura digital (SHA-256).</p>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;margin-bottom:1rem">
+        <button class="btn btn-primary" id="btn-nova-ata">+ Nova Ata / Reunião</button>
+      </div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Tipo</th>
+                <th>Pauta</th>
+                <th>Participantes</th>
+                <th>Deliberações</th>
+                <th>Assinatura</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody-conselho"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════ PÁGINA: PATRIMÔNIO ════════════════════════ -->
+    <section id="page-patrimonio" class="page">
+      <div class="page-header">
+        <h1 class="page-title">🏛️ Cuidado do Patrimônio</h1>
+        <p class="page-subtitle">Cronograma de manutenção (cân. 1284 §2, 1°) e inventário de bens (cân. 1283 2°).</p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🛠️ Cronograma de Manutenção</span>
+          <button class="btn btn-primary btn-sm" id="btn-novo-manutencao">+ Novo Item</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Bem</th>
+                <th>Descrição</th>
+                <th>Última Revisão</th>
+                <th>Próxima Revisão</th>
+                <th>Custo Est.</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody-manutencao"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card mt-3">
+        <div class="card-header">
+          <span class="card-title">📦 Inventário de Bens</span>
+          <button class="btn btn-primary btn-sm" id="btn-novo-inventario">+ Novo Bem</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Descrição</th>
+                <th>Aquisição</th>
+                <th>Valor</th>
+                <th>Estado</th>
+                <th>Localização</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody-inventario"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════ PÁGINA: TRANSPARÊNCIA PÚBLICA ════════════ -->
+    <section id="page-transparencia" class="page">
+      <div class="page-header">
+        <h1 class="page-title">🔎 Portal Público de Transparência</h1>
+        <p class="page-subtitle">Prestação de contas aos fiéis (cân. 1287 §2). Apenas dados consolidados, sem nomes ou informações sensíveis.</p>
+      </div>
+
+      <div class="alert-info" style="background:rgba(108,63,197,0.1);border:1px solid rgba(108,63,197,0.3);border-radius:var(--radius-sm);padding:0.9rem;margin-bottom:1rem;font-size:0.85rem;color:var(--text-secondary)">
+        ✝️ Esta página pode ser compartilhada com toda a comunidade. Ela <strong>não exibe</strong> nomes de dizimistas, telefones, observações confidenciais ou qualquer dado pessoal.
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card green">
+          <span class="kpi-icon">📥</span>
+          <div class="kpi-value text-success" id="tp-receita-ano">—</div>
+          <div class="kpi-label">Receita do Ano</div>
+        </div>
+        <div class="kpi-card red">
+          <span class="kpi-icon">📤</span>
+          <div class="kpi-value text-danger" id="tp-despesa-ano">—</div>
+          <div class="kpi-label">Despesas do Ano</div>
+        </div>
+        <div class="kpi-card purple">
+          <span class="kpi-icon">🏦</span>
+          <div class="kpi-value" id="tp-saldo-ano">—</div>
+          <div class="kpi-label">Saldo do Ano</div>
+        </div>
+        <div class="kpi-card gold">
+          <span class="kpi-icon">💛</span>
+          <div class="kpi-value text-accent" id="tp-pct-pobres">—</div>
+          <div class="kpi-label">% destinado aos Pobres (EG 198)</div>
+        </div>
+        <div class="kpi-card blue">
+          <span class="kpi-icon">🌍</span>
+          <div class="kpi-value" id="tp-pct-partilha">—</div>
+          <div class="kpi-label">% partilhado com Diocese / Missões</div>
+        </div>
+        <div class="kpi-card purple">
+          <span class="kpi-icon">🍞</span>
+          <div class="kpi-value" id="tp-kg-alimentos">—</div>
+          <div class="kpi-label">Kg de alimentos partilhados</div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card wide">
+          <div class="chart-title">📈 Receitas × Despesas — Últimos meses</div>
+          <div class="chart-container"><canvas id="chart-tp-barras"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">🍩 Distribuição de Despesas</div>
+          <div class="chart-container"><canvas id="chart-tp-rosca"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card mt-3">
+        <div class="card-header"><span class="card-title">📑 Balancetes Publicados</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Período</th>
+                <th>Receita</th>
+                <th>Despesa</th>
+                <th>Saldo</th>
+                <th>Publicado em</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-balancetes"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card mt-3">
+        <div class="card-header"><span class="card-title">🌍 Metas Missionárias</span></div>
+        <div id="tp-metas-missionarias" class="metas-grid"></div>
+      </div>
+    </section>
+
     <!-- ════════════════ PÁGINA: MEMBROS ════════════════ -->
     <section id="page-membros" class="page">
       <div class="page-header">
@@ -796,6 +1114,12 @@
           <option>Utilidades</option>
           <option>Liturgia</option>
           <option>Administrativo</option>
+          <option>Partilha Diocesana</option>
+          <option>Campanha da Evangelização</option>
+          <option>Campanha da Fraternidade</option>
+          <option>Campanha Missionária</option>
+          <option>Óbolo de São Pedro</option>
+          <option>Santa Infância</option>
           <option>Outros</option>
         </select>
       </div>
@@ -964,9 +1288,285 @@
       <label class="form-label" for="dizimo-obs">Observação</label>
       <input type="text" class="form-control" id="dizimo-obs" placeholder="Ex: Referente ao mês de Abril" />
     </div>
+    <div class="form-group">
+      <label class="form-label" for="dizimo-intencao">🙏 Intenção de Oração (opcional)</label>
+      <textarea class="form-control" id="dizimo-intencao" rows="2"
+        placeholder="Sua intenção será lembrada na Missa pelos dizimistas. Mantida em sigilo pastoral."></textarea>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-outline" data-close-modal>Cancelar</button>
       <button class="btn btn-primary" id="btn-salvar-dizimo">💾 Registrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Lançamento Caritativo -->
+<div class="modal-overlay" id="modal-caritativo" role="dialog" aria-modal="true" aria-labelledby="modal-car-title">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-car-title">💛 Lançamento do Fundo Caritativo</span>
+      <button class="modal-close" aria-label="Fechar">✕</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="car-data">Data *</label>
+        <input type="date" class="form-control" id="car-data" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="car-tipo">Tipo *</label>
+        <select class="form-control" id="car-tipo">
+          <option>Saída</option>
+          <option>Entrada</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="car-origem-destino">Origem / Destino *</label>
+      <input type="text" class="form-control" id="car-origem-destino" placeholder="Ex: Família assistida (Setor 3) / Coleta Quaresmal" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="car-categoria">Categoria</label>
+        <select class="form-control" id="car-categoria">
+          <option>Alimentos</option>
+          <option>Medicamentos</option>
+          <option>Aluguel</option>
+          <option>Energia</option>
+          <option>Funeral</option>
+          <option>Educação</option>
+          <option>Outros</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="car-valor">Valor (R$)</label>
+        <input type="number" class="form-control" id="car-valor" step="0.01" min="0" placeholder="0,00" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="car-familias">Famílias atendidas</label>
+        <input type="number" class="form-control" id="car-familias" min="0" value="0" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="car-kg">Quilos de alimentos</label>
+        <input type="number" class="form-control" id="car-kg" min="0" step="0.1" value="0" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="car-resp">Responsável (Pastoral Social, SSVP, etc.)</label>
+      <input type="text" class="form-control" id="car-resp" placeholder="Ex: SSVP / Pastoral Social" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="car-obs">Observação confidencial 🔒</label>
+      <textarea class="form-control" id="car-obs" rows="2" placeholder="Informações sigilosas sobre o caso. Serão mascaradas em qualquer exibição."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal>Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar-caritativo">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Meta de Evangelização -->
+<div class="modal-overlay" id="modal-meta-evang" role="dialog" aria-modal="true" aria-labelledby="modal-evang-title">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-evang-title">🌍 Nova Meta Evangelizadora</span>
+      <button class="modal-close" aria-label="Fechar">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="evang-titulo">Título *</label>
+      <input type="text" class="form-control" id="evang-titulo" placeholder="Ex: Novos Dizimistas 2026" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="evang-descricao">Descrição</label>
+      <textarea class="form-control" id="evang-descricao" rows="2" placeholder="O quê pretende alcançar?"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="evang-indicador">Indicador *</label>
+        <select class="form-control" id="evang-indicador">
+          <option>Novos dizimistas</option>
+          <option>Famílias visitadas</option>
+          <option>Catequizandos</option>
+          <option>Batizados</option>
+          <option>Crismandos</option>
+          <option>Outros</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="evang-periodo">Período</label>
+        <input type="text" class="form-control" id="evang-periodo" placeholder="Ex: 2026" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="evang-meta-num">Meta numérica *</label>
+        <input type="number" class="form-control" id="evang-meta-num" min="0" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="evang-realizado">Realizado</label>
+        <input type="number" class="form-control" id="evang-realizado" min="0" value="0" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="evang-resp">Responsável Pastoral</label>
+      <input type="text" class="form-control" id="evang-resp" placeholder="Ex: Pastoral do Dízimo" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal>Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar-evang">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Ata do Conselho Econômico -->
+<div class="modal-overlay" id="modal-conselho" role="dialog" aria-modal="true" aria-labelledby="modal-cons-title">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-cons-title">⚖️ Nova Ata / Reunião do CAE</span>
+      <button class="modal-close" aria-label="Fechar">✕</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="cons-data">Data *</label>
+        <input type="date" class="form-control" id="cons-data" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="cons-tipo">Tipo *</label>
+        <select class="form-control" id="cons-tipo">
+          <option>Reunião</option>
+          <option>Ata</option>
+          <option>Parecer</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="cons-pauta">Pauta *</label>
+      <textarea class="form-control" id="cons-pauta" rows="2"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="cons-participantes">Participantes</label>
+      <input type="text" class="form-control" id="cons-participantes" placeholder="Pe. João, José Silva (coord.), Maria Costa…" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="cons-deliberacoes">Deliberações</label>
+      <textarea class="form-control" id="cons-deliberacoes" rows="3"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="cons-anexo">URL do anexo (Drive, etc.)</label>
+      <input type="url" class="form-control" id="cons-anexo" placeholder="https://drive.google.com/…" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal>Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar-conselho">💾 Salvar com Assinatura Digital</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Item de Manutenção Patrimonial -->
+<div class="modal-overlay" id="modal-manutencao" role="dialog" aria-modal="true" aria-labelledby="modal-mant-title">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-mant-title">🛠️ Item de Manutenção</span>
+      <button class="modal-close" aria-label="Fechar">✕</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="mant-bem">Bem *</label>
+        <select class="form-control" id="mant-bem">
+          <option>Templo</option>
+          <option>Salão Paroquial</option>
+          <option>Casa Paroquial</option>
+          <option>Veículo Paroquial</option>
+          <option>Sistema de Som</option>
+          <option>Equipamento</option>
+          <option>Outros</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="mant-status">Status</label>
+        <select class="form-control" id="mant-status">
+          <option value="planejada">Planejada</option>
+          <option value="em-andamento">Em andamento</option>
+          <option value="concluida">Concluída</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="mant-descricao">Descrição *</label>
+      <input type="text" class="form-control" id="mant-descricao" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="mant-ultima">Última Revisão</label>
+        <input type="date" class="form-control" id="mant-ultima" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="mant-proxima">Próxima Revisão *</label>
+        <input type="date" class="form-control" id="mant-proxima" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="mant-custo">Custo estimado (R$)</label>
+      <input type="number" class="form-control" id="mant-custo" min="0" step="0.01" value="0" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal>Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar-manutencao">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Bem do Inventário -->
+<div class="modal-overlay" id="modal-inventario" role="dialog" aria-modal="true" aria-labelledby="modal-inv-title">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-inv-title">📦 Bem do Inventário</span>
+      <button class="modal-close" aria-label="Fechar">✕</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="inv-tipo">Tipo *</label>
+        <select class="form-control" id="inv-tipo">
+          <option>Imóvel</option>
+          <option>Móvel</option>
+          <option>Veículo</option>
+          <option>Equipamento</option>
+          <option>Sagrado</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="inv-estado">Estado</label>
+        <select class="form-control" id="inv-estado">
+          <option>Bom</option>
+          <option>Regular</option>
+          <option>Ruim</option>
+          <option>Restaurado</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="inv-descricao">Descrição *</label>
+      <input type="text" class="form-control" id="inv-descricao" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="inv-aquisicao">Data de Aquisição</label>
+        <input type="date" class="form-control" id="inv-aquisicao" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="inv-valor">Valor estimado (R$)</label>
+        <input type="number" class="form-control" id="inv-valor" min="0" step="0.01" value="0" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="inv-localizacao">Localização</label>
+      <input type="text" class="form-control" id="inv-localizacao" placeholder="Ex: Sacristia, Salão Paroquial…" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal>Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar-inventario">💾 Salvar</button>
     </div>
   </div>
 </div>

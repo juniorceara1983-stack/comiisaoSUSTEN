@@ -55,9 +55,30 @@ O **SUSTEN** é uma aplicação web progressiva (PWA) de custo operacional **zer
 │                  DADOS (Database)                            │
 │  Google Sheets (acesso restrito ao administrador)           │
 │  Abas: Lançamentos | Metas | Voluntários | Membros |        │
-│        Dízimos | Configurações | Log                        │
+│        Dízimos | Configurações | Log |                      │
+│        Fundo_Caritativo | Metas_Evangelizacao |             │
+│        Conselho_Economico | Manutencao_Patrimonial |        │
+│        Inventario | Prestacao_Contas                        │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## ✝️ Fundamentação Documental
+
+O sistema é estruturado em torno das **4 dimensões do dízimo** (Doc. 106 CNBB) e das obrigações canônicas da administração paroquial:
+
+| Documento | Como o sistema responde |
+|---|---|
+| **Doc. 106 CNBB – "O Dízimo na Comunidade de Fé"** | Dimensões Religiosa, Eclesial, Missionária e Caritativa estruturam toda a navegação. |
+| **Doc. 105 CNBB – Diretrizes Gerais da Ação Evangelizadora** | Aba `Metas_Evangelizacao` com indicadores não-financeiros (catequizandos, batizados, famílias visitadas). |
+| **Carta Encíclica *Laudato Si'*** | Dashboard "Impacto da Caridade" + cronograma de manutenção patrimonial. |
+| **Exortação *Evangelii Gaudium* (n. 198)** | KPI "% da receita destinado aos pobres" com meta sugerida de ≥10%. |
+| **Código de Direito Canônico (cân. 537)** | Aba `Conselho_Economico` com atas, pautas, deliberações e assinatura digital (SHA-256). |
+| **Cân. 1283 2°** | Aba `Inventario` para bens móveis e imóveis. |
+| **Cân. 1284 §2, 1°** | Aba `Manutencao_Patrimonial` + alertas semanais para revisões próximas. |
+| **Cân. 1287 §2** | Portal Público de Transparência (rota sem login, dados consolidados anônimos). |
+| **Cân. 1267 §3** | Fundo Caritativo separado contabilmente da conta geral. |
 
 ---
 

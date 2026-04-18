@@ -18,8 +18,25 @@ const SHEETS = {
   MEMBROS:     'Membros',
   DIZIMOS:     'Dízimos',
   CONFIG:      'Configurações',
-  LOG:         'Log'
+  LOG:         'Log',
+  // Novas abas pastorais (Doc. 106 CNBB / cân. 537, 1283, 1284, 1287)
+  FUNDO_CARITATIVO:      'Fundo_Caritativo',       // Dimensão Caritativa
+  METAS_EVANGELIZACAO:   'Metas_Evangelizacao',    // Dimensão Missionária
+  CONSELHO_ECONOMICO:    'Conselho_Economico',     // Governança / CAE
+  MANUTENCAO_PATRIMONIAL:'Manutencao_Patrimonial', // Cuidado da Casa Comum
+  INVENTARIO:            'Inventario',             // Inventário de bens
+  PRESTACAO_CONTAS:      'Prestacao_Contas'        // Balancetes publicados
 };
+
+/* ── Categorias de partilha "ad extra" (Dimensão Missionária) ── */
+const CATEGORIAS_PARTILHA_AD_EXTRA = [
+  'Partilha Diocesana',
+  'Campanha da Evangelização',
+  'Campanha da Fraternidade',
+  'Campanha Missionária',
+  'Óbolo de São Pedro',
+  'Santa Infância'
+];
 
 /* ── Acesso à planilha ativa ──────────────────────────────── */
 const SS  = () => SpreadsheetApp.getActiveSpreadsheet();
@@ -45,6 +62,17 @@ function doGet(e) {
       case 'getMembros':      resultado = getMembros();      break;
       case 'getConfig':       resultado = getConfig();       break;
       case 'getRelatorio':    resultado = getRelatorio(e.parameter); break;
+      // Novos endpoints pastorais
+      case 'getFundoCaritativo':      resultado = getFundoCaritativo();     break;
+      case 'getImpactoCaridade':      resultado = getImpactoCaridade();     break;
+      case 'getMetasEvangelizacao':   resultado = getMetasEvangelizacao();  break;
+      case 'getTermometroMissionario':resultado = getTermometroMissionario(); break;
+      case 'getConselhoEconomico':    resultado = getConselhoEconomico();   break;
+      case 'getManutencaoPatrimonial':resultado = getManutencaoPatrimonial(); break;
+      case 'getInventario':           resultado = getInventario();          break;
+      case 'getPrestacaoContas':      resultado = getPrestacaoContas();     break;
+      // Endpoint público (sem dados sensíveis) – cân. 1287 §2
+      case 'getTransparenciaPublica': resultado = getTransparenciaPublica(); break;
       default:
         resultado = { erro: 'Ação desconhecida: ' + action };
     }
@@ -79,6 +107,28 @@ function doPost(e) {
       case 'deleteMembro':      resultado = deleteMembro(payload.id);  break;
       case 'registrarDizimo':   resultado = registrarDizimo(payload);  break;
       case 'saveConfig':        resultado = saveConfig(payload);       break;
+      // Fundo Caritativo (cân. 1267 §3 – ofertas para fim determinado)
+      case 'addFundoCaritativo':    resultado = addFundoCaritativo(payload);    break;
+      case 'updateFundoCaritativo': resultado = updateFundoCaritativo(payload); break;
+      case 'deleteFundoCaritativo': resultado = deleteFundoCaritativo(payload.id); break;
+      // Metas Evangelização
+      case 'addMetaEvangelizacao':    resultado = addMetaEvangelizacao(payload);    break;
+      case 'updateMetaEvangelizacao': resultado = updateMetaEvangelizacao(payload); break;
+      case 'deleteMetaEvangelizacao': resultado = deleteMetaEvangelizacao(payload.id); break;
+      // Conselho Econômico (cân. 537)
+      case 'addConselhoEconomico':    resultado = addConselhoEconomico(payload);    break;
+      case 'updateConselhoEconomico': resultado = updateConselhoEconomico(payload); break;
+      case 'deleteConselhoEconomico': resultado = deleteConselhoEconomico(payload.id); break;
+      // Manutenção Patrimonial (cân. 1284 §2, 1°)
+      case 'addManutencaoPatrimonial':    resultado = addManutencaoPatrimonial(payload);    break;
+      case 'updateManutencaoPatrimonial': resultado = updateManutencaoPatrimonial(payload); break;
+      case 'deleteManutencaoPatrimonial': resultado = deleteManutencaoPatrimonial(payload.id); break;
+      // Inventário (cân. 1283 2°)
+      case 'addInventario':    resultado = addInventario(payload);    break;
+      case 'updateInventario': resultado = updateInventario(payload); break;
+      case 'deleteInventario': resultado = deleteInventario(payload.id); break;
+      // Prestação de Contas (cân. 1284 §2, 8° / 1287)
+      case 'publicarBalancete': resultado = publicarBalancete(payload); break;
       default:
         resultado = { erro: 'Ação desconhecida: ' + action };
     }
@@ -282,11 +332,11 @@ function deleteMembro(id) {
 }
 
 function registrarDizimo(payload) {
-  const { nome, valor, data } = payload.data || payload;
+  const { nome, valor, data, intencao } = payload.data || payload;
   _garantirCabecalho(SHEETS.DIZIMOS,
-    ['id','data','nome','valor','observacao']);
+    ['id','data','nome','valor','intencao','observacao']);
   const sh = SH(SHEETS.DIZIMOS);
-  sh.appendRow([Date.now(), data, nome, Number(valor), payload.obs || '']);
+  sh.appendRow([Date.now(), data, nome, Number(valor), intencao || '', payload.obs || '']);
 
   // Atualizar linha do membro correspondente
   const membros_sh = SH(SHEETS.MEMBROS);
@@ -435,10 +485,30 @@ function registrarLog(tipo, acao, detalhes) {
  * Execute esta função UMA VEZ após implantar o Web App.
  */
 function instalarGatilhos() {
-  // Trigger diário às 8h para verificar dizimistas inativos
+  // Trigger semanal para verificar dizimistas inativos
   ScriptApp.newTrigger('verificarDizimistasInativos')
     .timeBased().everyDays(7).atHour(8).create();
+  // Trigger semanal para verificar manutenções patrimoniais próximas (cân. 1284)
+  ScriptApp.newTrigger('verificarManutencoesProximas')
+    .timeBased().everyDays(7).atHour(8).create();
+  // Backup semanal (cân. 1284 §2, 8°)
+  ScriptApp.newTrigger('backupSemanal')
+    .timeBased().everyDays(7).atHour(2).create();
   Logger.log('Gatilhos instalados com sucesso!');
+}
+
+/**
+ * Verifica manutenções patrimoniais com data próxima (≤30 dias) ou atrasadas.
+ * Registra no Log para o coordenador agir.
+ */
+function verificarManutencoesProximas() {
+  const itens = getManutencaoPatrimonial();
+  const proximas = itens.filter(i => i.alerta || i.atrasada);
+  if (proximas.length > 0) {
+    registrarLog('VERIFICAÇÃO', 'Manutenção Patrimonial',
+      `${proximas.length} item(ns) com manutenção próxima/atrasada: ${proximas.map(i => i.bem).join(', ')}`);
+  }
+  return { total: proximas.length, itens: proximas.map(i => i.bem) };
 }
 
 /**
@@ -460,4 +530,393 @@ function verificarDizimistasInativos() {
       `${inativos.length} dizimista(s) sem dízimo há mais de 60 dias: ${inativos.map(m => m.nome).join(', ')}`);
   }
   return { inativos: inativos.length, membros: inativos.map(m => m.nome) };
+}
+
+/* ══════════════════════════════════════════════════════════
+   FUNDO CARITATIVO – Dimensão Caritativa (EG 198)
+   Cân. 1267 §3: as ofertas para um fim determinado só podem
+   ser usadas para esse fim.
+   ══════════════════════════════════════════════════════════ */
+
+const _CABECALHO_CARITATIVO = ['id','data','tipo','origem_destino','categoria',
+  'familias_atendidas','quilos_alimentos','valor','responsavel_pastoral_social',
+  'observacao_confidencial'];
+
+function getFundoCaritativo() {
+  _garantirCabecalho(SHEETS.FUNDO_CARITATIVO, _CABECALHO_CARITATIVO);
+  const rows = _lerAba(SHEETS.FUNDO_CARITATIVO);
+  // Mascara observação confidencial – só visível ao próprio responsável/pároco
+  return rows.map(r => ({
+    ...r,
+    observacao_confidencial: _mascararConfidencial(r.observacao_confidencial)
+  }));
+}
+
+function addFundoCaritativo(data) {
+  _garantirCabecalho(SHEETS.FUNDO_CARITATIVO, _CABECALHO_CARITATIVO);
+  const sh = SH(SHEETS.FUNDO_CARITATIVO);
+  const id = Date.now();
+  sh.appendRow([id, data.data, data.tipo, data.origem_destino || '',
+                data.categoria || 'Outros',
+                Number(data.familias_atendidas || 0),
+                Number(data.quilos_alimentos || 0),
+                Number(data.valor || 0),
+                data.responsavel_pastoral_social || '',
+                data.observacao_confidencial || '']);
+  registrarLog('ADD', 'Fundo Caritativo', `id=${id} cat=${data.categoria}`);
+  return { ok: true, id };
+}
+
+function updateFundoCaritativo(data) {
+  return _atualizarPorId(SHEETS.FUNDO_CARITATIVO, data);
+}
+
+function deleteFundoCaritativo(id) {
+  return _deletarPorId(SHEETS.FUNDO_CARITATIVO, id);
+}
+
+/**
+ * Dashboard "Impacto da Caridade" – Laudato Si' nn. 137-162 / EG 198.
+ * Retorna agregados anônimos sobre obras de misericórdia.
+ */
+function getImpactoCaridade() {
+  _garantirCabecalho(SHEETS.FUNDO_CARITATIVO, _CABECALHO_CARITATIVO);
+  const rows = _lerAba(SHEETS.FUNDO_CARITATIVO);
+  const agora = new Date();
+  const ano   = agora.getFullYear();
+  const mes   = agora.getMonth() + 1;
+
+  const doAno = rows.filter(r => r.data && new Date(r.data).getFullYear() === ano);
+  const doMes = doAno.filter(r => new Date(r.data).getMonth() + 1 === mes);
+
+  const sum = (arr, campo) => arr.reduce((s, r) => s + Number(r[campo] || 0), 0);
+
+  const familias_mes  = sum(doMes.filter(r => r.tipo === 'Saída'), 'familias_atendidas');
+  const familias_ano  = sum(doAno.filter(r => r.tipo === 'Saída'), 'familias_atendidas');
+  const kg_alimentos_ano = sum(doAno, 'quilos_alimentos');
+  const total_caridade_ano = sum(doAno.filter(r => r.tipo === 'Saída'), 'valor');
+
+  // % da receita total destinada aos pobres (referência EG 198: ≥10%)
+  const fin = getFinanceiro();
+  const receita_ano = Number(fin.receita_ano || 0);
+  const pct_pobres = receita_ano > 0 ? (total_caridade_ano / receita_ano) * 100 : 0;
+  const config = getConfig();
+  const meta_pct_pobres = Number(config.meta_pct_pobres || 10);
+
+  // Distribuição por categoria
+  const porCategoria = {};
+  doAno.filter(r => r.tipo === 'Saída').forEach(r => {
+    const c = r.categoria || 'Outros';
+    porCategoria[c] = (porCategoria[c] || 0) + Number(r.valor || 0);
+  });
+
+  return {
+    familias_mes,
+    familias_ano,
+    kg_alimentos_ano,
+    total_caridade_ano,
+    receita_ano,
+    pct_pobres: Number(pct_pobres.toFixed(2)),
+    meta_pct_pobres,
+    distribuicao: Object.entries(porCategoria).map(([cat, val]) => ({ categoria: cat, valor: val }))
+  };
+}
+
+/* ══════════════════════════════════════════════════════════
+   METAS DE EVANGELIZAÇÃO – Dimensão Missionária
+   Doc. 105 CNBB / Evangelii Gaudium
+   ══════════════════════════════════════════════════════════ */
+
+const _CABECALHO_EVANG = ['id','titulo','descricao','indicador','meta_numerica',
+  'realizado','periodo','responsavel_pastoral'];
+
+function getMetasEvangelizacao() {
+  _garantirCabecalho(SHEETS.METAS_EVANGELIZACAO, _CABECALHO_EVANG);
+  return _lerAba(SHEETS.METAS_EVANGELIZACAO);
+}
+
+function addMetaEvangelizacao(data) {
+  _garantirCabecalho(SHEETS.METAS_EVANGELIZACAO, _CABECALHO_EVANG);
+  const sh = SH(SHEETS.METAS_EVANGELIZACAO);
+  const id = Date.now();
+  sh.appendRow([id, data.titulo, data.descricao || '', data.indicador,
+                Number(data.meta_numerica || 0), Number(data.realizado || 0),
+                data.periodo || '', data.responsavel_pastoral || '']);
+  return { ok: true, id };
+}
+
+function updateMetaEvangelizacao(data) {
+  return _atualizarPorId(SHEETS.METAS_EVANGELIZACAO, data);
+}
+
+function deleteMetaEvangelizacao(id) {
+  return _deletarPorId(SHEETS.METAS_EVANGELIZACAO, id);
+}
+
+/**
+ * Termômetro Missionário: agrega metas e calcula partilha "ad extra".
+ */
+function getTermometroMissionario() {
+  const metas = getMetasEvangelizacao();
+  const lancamentos = getLancamentos();
+  const ano = new Date().getFullYear();
+
+  const doAno = lancamentos.filter(l => l.data && new Date(l.data).getFullYear() === ano);
+  const receita_ano = doAno.filter(l => l.tipo === 'receita').reduce((s, l) => s + Number(l.valor || 0), 0);
+  const partilha_ad_extra = doAno.filter(l =>
+    CATEGORIAS_PARTILHA_AD_EXTRA.indexOf(l.categoria) !== -1
+  ).reduce((s, l) => s + Number(l.valor || 0), 0);
+
+  const pct_partilha = receita_ano > 0 ? (partilha_ad_extra / receita_ano) * 100 : 0;
+  const config = getConfig();
+  const meta_pct_partilha = Number(config.meta_pct_partilha || 5);
+
+  return {
+    metas,
+    receita_ano,
+    partilha_ad_extra,
+    pct_partilha: Number(pct_partilha.toFixed(2)),
+    meta_pct_partilha,
+    categorias_ad_extra: CATEGORIAS_PARTILHA_AD_EXTRA
+  };
+}
+
+/* ══════════════════════════════════════════════════════════
+   CONSELHO ECONÔMICO – Cân. 537 / 1284 §2, 7°
+   ══════════════════════════════════════════════════════════ */
+
+const _CABECALHO_CONSELHO = ['id','data','tipo','pauta','participantes',
+  'deliberacoes','anexo_url','assinatura_hash'];
+
+function getConselhoEconomico() {
+  _garantirCabecalho(SHEETS.CONSELHO_ECONOMICO, _CABECALHO_CONSELHO);
+  return _lerAba(SHEETS.CONSELHO_ECONOMICO);
+}
+
+function addConselhoEconomico(data) {
+  _garantirCabecalho(SHEETS.CONSELHO_ECONOMICO, _CABECALHO_CONSELHO);
+  const sh = SH(SHEETS.CONSELHO_ECONOMICO);
+  const id = Date.now();
+  // Assinatura digital interna (auditável): hash SHA-256 do conteúdo da ata
+  // + timestamp + e-mail do usuário que registrou. O e-mail é parte
+  // intencional do hash para fins de rastreio canônico (cân. 1284 §2, 7°);
+  // qualquer alteração subsequente por outro usuário gera novo hash, o que
+  // torna evidente a quebra de integridade da ata original.
+  const conteudo = `${id}|${data.data}|${data.tipo}|${data.pauta}|${data.deliberacoes}|${new Date().toISOString()}|${Session.getEffectiveUser().getEmail()}`;
+  const hash = _sha256(conteudo);
+  sh.appendRow([id, data.data, data.tipo || 'Reunião',
+                data.pauta || '', data.participantes || '',
+                data.deliberacoes || '', data.anexo_url || '', hash]);
+  registrarLog('ADD', 'Conselho Econômico', `id=${id} hash=${hash.substring(0,12)}`);
+  return { ok: true, id, assinatura_hash: hash };
+}
+
+function updateConselhoEconomico(data) {
+  return _atualizarPorId(SHEETS.CONSELHO_ECONOMICO, data);
+}
+
+function deleteConselhoEconomico(id) {
+  return _deletarPorId(SHEETS.CONSELHO_ECONOMICO, id);
+}
+
+/* ══════════════════════════════════════════════════════════
+   MANUTENÇÃO PATRIMONIAL – Cân. 1284 §2, 1° ("bom pai de família")
+   ══════════════════════════════════════════════════════════ */
+
+const _CABECALHO_MANUTENCAO = ['id','bem','descricao','ultima_revisao',
+  'proxima_revisao','custo_estimado','status'];
+
+function getManutencaoPatrimonial() {
+  _garantirCabecalho(SHEETS.MANUTENCAO_PATRIMONIAL, _CABECALHO_MANUTENCAO);
+  const rows = _lerAba(SHEETS.MANUTENCAO_PATRIMONIAL);
+  // Marcar alertas (próximos 30 dias) e atrasados
+  const agora = new Date();
+  return rows.map(r => {
+    let alerta = false, atrasada = false;
+    if (r.proxima_revisao) {
+      const prox = new Date(r.proxima_revisao);
+      const diff = (prox - agora) / (1000 * 60 * 60 * 24);
+      atrasada = diff < 0;
+      alerta   = diff >= 0 && diff <= 30;
+    }
+    return { ...r, alerta, atrasada };
+  });
+}
+
+function addManutencaoPatrimonial(data) {
+  _garantirCabecalho(SHEETS.MANUTENCAO_PATRIMONIAL, _CABECALHO_MANUTENCAO);
+  const sh = SH(SHEETS.MANUTENCAO_PATRIMONIAL);
+  const id = Date.now();
+  sh.appendRow([id, data.bem, data.descricao || '',
+                data.ultima_revisao || '', data.proxima_revisao || '',
+                Number(data.custo_estimado || 0), data.status || 'planejada']);
+  return { ok: true, id };
+}
+
+function updateManutencaoPatrimonial(data) {
+  return _atualizarPorId(SHEETS.MANUTENCAO_PATRIMONIAL, data);
+}
+
+function deleteManutencaoPatrimonial(id) {
+  return _deletarPorId(SHEETS.MANUTENCAO_PATRIMONIAL, id);
+}
+
+/* ══════════════════════════════════════════════════════════
+   INVENTÁRIO DE BENS – Cân. 1283 2°
+   ══════════════════════════════════════════════════════════ */
+
+const _CABECALHO_INVENTARIO = ['id','tipo','descricao','data_aquisicao',
+  'valor','estado_conservacao','localizacao'];
+
+function getInventario() {
+  _garantirCabecalho(SHEETS.INVENTARIO, _CABECALHO_INVENTARIO);
+  return _lerAba(SHEETS.INVENTARIO);
+}
+
+function addInventario(data) {
+  _garantirCabecalho(SHEETS.INVENTARIO, _CABECALHO_INVENTARIO);
+  const sh = SH(SHEETS.INVENTARIO);
+  const id = Date.now();
+  sh.appendRow([id, data.tipo || 'Móvel', data.descricao || '',
+                data.data_aquisicao || '', Number(data.valor || 0),
+                data.estado_conservacao || 'Bom', data.localizacao || '']);
+  return { ok: true, id };
+}
+
+function updateInventario(data) {
+  return _atualizarPorId(SHEETS.INVENTARIO, data);
+}
+
+function deleteInventario(id) {
+  return _deletarPorId(SHEETS.INVENTARIO, id);
+}
+
+/* ══════════════════════════════════════════════════════════
+   PRESTAÇÃO DE CONTAS PÚBLICA – Cân. 1287 §2
+   ══════════════════════════════════════════════════════════ */
+
+const _CABECALHO_PRESTACAO = ['id','periodo','receita','despesa','saldo','publicado','data_publicacao'];
+
+function getPrestacaoContas() {
+  _garantirCabecalho(SHEETS.PRESTACAO_CONTAS, _CABECALHO_PRESTACAO);
+  return _lerAba(SHEETS.PRESTACAO_CONTAS);
+}
+
+function publicarBalancete(data) {
+  _garantirCabecalho(SHEETS.PRESTACAO_CONTAS, _CABECALHO_PRESTACAO);
+  const sh = SH(SHEETS.PRESTACAO_CONTAS);
+  const id = Date.now();
+  sh.appendRow([id, data.periodo,
+                Number(data.receita || 0), Number(data.despesa || 0),
+                Number(data.receita || 0) - Number(data.despesa || 0),
+                true, new Date().toISOString()]);
+  registrarLog('PUBLICAR', 'Balancete', `periodo=${data.periodo}`);
+  return { ok: true, id };
+}
+
+/**
+ * Endpoint público: dados consolidados, anônimos.
+ * Atende cân. 1287 §2 (prestação de contas aos fiéis).
+ * NUNCA inclui nomes de dizimistas, telefones ou observações confidenciais.
+ */
+function getTransparenciaPublica() {
+  const fin = getFinanceiro();
+  const impacto = getImpactoCaridade();
+  const missionario = getTermometroMissionario();
+  const balancetes = getPrestacaoContas().filter(b => b.publicado === true || b.publicado === 'true');
+  const config = getConfig();
+
+  return {
+    paroquia: {
+      nome: config.nome || ''
+    },
+    financeiro: {
+      receita_mes: fin.receita_mes,
+      despesa_mes: fin.despesa_mes,
+      saldo_mes:   fin.saldo_mes,
+      receita_ano: fin.receita_ano,
+      despesa_ano: fin.despesa_ano,
+      saldo_ano:   fin.saldo_ano,
+      historico_meses: fin.historico_meses,
+      distribuicao:    fin.distribuicao
+    },
+    impacto_caridade: {
+      familias_ano:       impacto.familias_ano,
+      kg_alimentos_ano:   impacto.kg_alimentos_ano,
+      total_caridade_ano: impacto.total_caridade_ano,
+      pct_pobres:         impacto.pct_pobres,
+      meta_pct_pobres:    impacto.meta_pct_pobres
+    },
+    missionario: {
+      partilha_ad_extra: missionario.partilha_ad_extra,
+      pct_partilha:      missionario.pct_partilha,
+      meta_pct_partilha: missionario.meta_pct_partilha,
+      metas: missionario.metas.map(m => ({
+        titulo: m.titulo, indicador: m.indicador,
+        meta_numerica: m.meta_numerica, realizado: m.realizado, periodo: m.periodo
+      }))
+    },
+    balancetes_publicados: balancetes.map(b => ({
+      periodo: b.periodo, receita: b.receita, despesa: b.despesa,
+      saldo: b.saldo, data_publicacao: b.data_publicacao
+    }))
+  };
+}
+
+/* ══════════════════════════════════════════════════════════
+   UTILITÁRIOS PASTORAIS
+   ══════════════════════════════════════════════════════════ */
+
+/**
+ * Mascara observação confidencial (LGPD + segredo pastoral).
+ * Mantém apenas iniciais.
+ */
+function _mascararConfidencial(texto) {
+  if (!texto) return '';
+  const s = String(texto);
+  if (s.length <= 4) return '***';
+  return s.substring(0, 2) + '***' + s.substring(s.length - 2);
+}
+
+/**
+ * SHA-256 hex – usado para assinatura digital interna das atas do CAE.
+ */
+function _sha256(texto) {
+  const bytes = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    String(texto),
+    Utilities.Charset.UTF_8
+  );
+  return bytes.map(b => {
+    const v = (b < 0 ? b + 256 : b).toString(16);
+    return v.length === 1 ? '0' + v : v;
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════════════════
+   BACKUP AUTOMÁTICO – Cân. 1284 §2, 8° (boa conservação dos registros)
+   ══════════════════════════════════════════════════════════ */
+
+/**
+ * Cria cópia datada da planilha numa pasta dedicada (ID configurável).
+ * Configure 'backup_folder_id' em Configurações para ativar.
+ */
+function backupSemanal() {
+  try {
+    const config = getConfig();
+    const folderId = config.backup_folder_id;
+    if (!folderId) {
+      registrarLog('BACKUP', 'Pasta não configurada', 'Defina backup_folder_id em Configurações');
+      return { ok: false, erro: 'backup_folder_id não configurado' };
+    }
+    const ss = SS();
+    const nome = `${ss.getName()} – Backup ${Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd')}`;
+    const folder = DriveApp.getFolderById(folderId);
+    const copia = DriveApp.getFileById(ss.getId()).makeCopy(nome, folder);
+    registrarLog('BACKUP', 'OK', `id=${copia.getId()}`);
+    return { ok: true, id: copia.getId() };
+  } catch (err) {
+    registrarLog('ERRO BACKUP', 'backupSemanal', err.message);
+    return { ok: false, erro: err.message };
+  }
 }
