@@ -14,6 +14,16 @@ const State = {
   voluntarios:        [],
   membros:            [],
   paroquia:           null,
+  // Novos módulos pastorais
+  fundoCaritativo:        [],
+  impactoCaridade:        null,
+  metasEvangelizacao:     [],
+  termometroMissionario:  null,
+  conselhoEconomico:      [],
+  manutencaoPatrimonial:  [],
+  inventario:             [],
+  prestacaoContas:        [],
+  versiculoIdx:           0,
   filterLancamentos:  'todos',
   filterVoluntarios:  'todos',
   filterMembros:      'todos',
@@ -84,10 +94,15 @@ const navigate = pageName => {
     dashboard:    ['Dashboard',          'Visão geral do sistema'],
     financeiro:   ['Financeiro',         'Receitas, despesas e transparência'],
     metas:        ['Termômetro de Metas','Acompanhe os projetos da paróquia'],
-    dizimo:       ['Dízimo Digital',     'Registre e acompanhe contribuições'],
+    dizimo:       ['Dízimo Digital',     'Minha Oferta de Gratidão'],
     voluntarios:  ['Banco de Voluntários','Talentos da comunidade'],
     comunicacao:  ['Comunicação',        'Mensagens via WhatsApp'],
     membros:      ['Membros',            'Gestão de dizimistas e paroquianos'],
+    caridade:     ['Impacto da Caridade','Laudato Si\' / EG 198'],
+    evangelizacao:['Evangelização',      'Termômetro Missionário (Doc. 105 CNBB)'],
+    conselho:     ['Conselho Econômico', 'Atas e deliberações (cân. 537)'],
+    patrimonio:   ['Patrimônio',         'Manutenção e inventário (cân. 1283-1284)'],
+    transparencia:['Transparência Pública','Prestação de contas (cân. 1287)'],
     relatorios:   ['Relatórios',         'Exportar e analisar dados'],
     configuracoes:['Configurações',      'Preferências do sistema']
   };
@@ -124,6 +139,11 @@ const renderPage = page => {
     case 'voluntarios':  renderVoluntarios(); break;
     case 'comunicacao':  renderComunicacao(); break;
     case 'membros':      renderMembros();     break;
+    case 'caridade':     renderCaridade();    break;
+    case 'evangelizacao':renderEvangelizacao();break;
+    case 'conselho':     renderConselho();    break;
+    case 'patrimonio':   renderPatrimonio();  break;
+    case 'transparencia':renderTransparencia();break;
     case 'relatorios':   renderRelatorios();  break;
     case 'configuracoes':renderConfiguracoes();break;
   }
@@ -409,11 +429,29 @@ const salvarMeta = async () => {
 };
 
 /* ══════════════════════════════════════════════════════════════
-   DÍZIMO DIGITAL
+   DÍZIMO DIGITAL — Minha Oferta de Gratidão (Doc. 106 CNBB)
    ══════════════════════════════════════════════════════════════ */
+
+/** Sorteia um versículo (rotação determinística pelo dia + clique) */
+const renderVersiculo = () => {
+  const lista = (DEMO_DATA.versiculos || []);
+  if (!lista.length) return;
+  const v = lista[State.versiculoIdx % lista.length];
+  const txt = $('versiculo-texto');
+  const ref = $('versiculo-ref');
+  if (txt) txt.textContent = '"' + v.texto + '"';
+  if (ref) ref.textContent = '— ' + v.ref;
+};
+
 const renderDizimo = () => {
   const { paroquia, membros } = State;
   if (!paroquia) return;
+
+  // Versículo do dia (índice estável por dia)
+  const dia = new Date();
+  State.versiculoIdx = (dia.getFullYear() * 1000 + dia.getMonth() * 31 + dia.getDate())
+                       % (DEMO_DATA.versiculos?.length || 1);
+  renderVersiculo();
 
   $('pix-chave-val').textContent   = paroquia.pixChave;
   $('pix-tipo-val').textContent    = paroquia.pixTipo;
@@ -440,9 +478,10 @@ const renderDizimo = () => {
 };
 
 const salvarDizimo = () => {
-  const nome  = $('dizimo-nome').value.trim();
-  const valor = parseFloat($('dizimo-valor').value);
-  const data  = $('dizimo-data').value;
+  const nome     = $('dizimo-nome').value.trim();
+  const valor    = parseFloat($('dizimo-valor').value);
+  const data     = $('dizimo-data').value;
+  const intencao = $('dizimo-intencao')?.value.trim() || '';
   if (!nome || !valor || !data) return toast('Preencha todos os campos.', 'warning');
 
   const membro = State.membros.find(m => m.nome.toLowerCase() === nome.toLowerCase());
@@ -455,9 +494,23 @@ const salvarDizimo = () => {
   State.lancamentos.unshift({ id: Date.now(), data, descricao: `Dízimo – ${nome}`, tipo: 'receita', valor, categoria: 'Dízimo', responsavel: nome });
 
   closeModal('modal-dizimo-reg');
+  if ($('dizimo-intencao')) $('dizimo-intencao').value = '';
   renderDizimo();
-  toast(`Dízimo de ${nome} registrado!`, 'success');
-  API.registrarDizimo({ nome, valor, data }).catch(() => {});
+
+  // Mensagem pastoral rotativa de agradecimento
+  const ag = (DEMO_DATA.mensagensAgradecimento || []);
+  if (ag.length) {
+    const msg = ag[Math.floor(Math.random() * ag.length)];
+    toast(`Dízimo de ${nome} registrado! ${msg.texto} ${msg.versiculo}`, 'success', 6000);
+  } else {
+    toast(`Dízimo de ${nome} registrado!`, 'success');
+  }
+
+  if (intencao) {
+    toast('🙏 Intenção de oração registrada com sigilo pastoral.', 'info', 4500);
+  }
+
+  API.registrarDizimo({ nome, valor, data, intencao }).catch(() => {});
 };
 
 /* ══════════════════════════════════════════════════════════════
@@ -799,24 +852,534 @@ const salvarConfiguracoes = async () => {
 };
 
 /* ══════════════════════════════════════════════════════════════
-   INICIALIZAÇÃO
+   CARIDADE — Dashboard "Impacto Laudato Si'" (EG 198, cân. 1267 §3)
    ══════════════════════════════════════════════════════════════ */
+const _CORES_CARIDADE = ['#f5a623','#e74c3c','#27ae60','#2980b9','#9b6de0','#7f8c8d'];
+
+const renderCaridade = () => {
+  const imp = State.impactoCaridade;
+  const fundo = State.fundoCaritativo || [];
+  if (!imp) return;
+
+  $('car-familias-mes').textContent = imp.familias_mes;
+  $('car-familias-ano').textContent = imp.familias_ano;
+  $('car-kg-alimentos').textContent = (Number(imp.kg_alimentos_ano) || 0).toLocaleString('pt-BR') + ' kg';
+  $('car-total-ano').textContent    = fmt.moeda(imp.total_caridade_ano);
+  $('car-pct-pobres').textContent   = fmt.pct(imp.pct_pobres);
+  const meta = Number(imp.meta_pct_pobres || 10);
+  const elMeta = $('car-pct-meta');
+  if (elMeta) {
+    const ok = imp.pct_pobres >= meta;
+    elMeta.textContent = `Meta EG 198: ≥${meta}% — ${ok ? '✅ Atingida' : '⚠️ Abaixo'}`;
+    elMeta.className   = 'kpi-trend ' + (ok ? 'text-success' : 'text-danger');
+  }
+
+  // Distribuição
+  if (imp.distribuicao && imp.distribuicao.length) {
+    Charts.renderRosca('chart-caridade',
+      imp.distribuicao.map(d => d.categoria),
+      imp.distribuicao.map(d => d.valor),
+      imp.distribuicao.map((_, i) => _CORES_CARIDADE[i % _CORES_CARIDADE.length])
+    );
+  }
+
+  // Gauge meta % aos pobres
+  const gauge = Math.min(Math.round((imp.pct_pobres / Math.max(meta, 1)) * 100), 100);
+  Charts.renderGauge('gauge-caridade', gauge, gauge >= 100 ? '#27ae60' : '#f5a623');
+  const gLabel = $('gauge-caridade-label');
+  if (gLabel) gLabel.textContent = fmt.pct(imp.pct_pobres);
+
+  // Tabela
+  const tbody = $('tbody-caritativo');
+  if (tbody) {
+    tbody.innerHTML = fundo.map(f => `
+      <tr>
+        <td>${fmt.data(f.data)}</td>
+        <td><span class="badge ${f.tipo === 'Saída' ? 'badge-red' : 'badge-green'}">${f.tipo}</span></td>
+        <td>${escapeHtml(f.origem_destino)}</td>
+        <td><span class="badge badge-purple">${escapeHtml(f.categoria)}</span></td>
+        <td>${f.familias_atendidas || 0}</td>
+        <td>${(Number(f.quilos_alimentos) || 0).toLocaleString('pt-BR')}</td>
+        <td class="fw-bold ${f.tipo === 'Saída' ? 'text-danger' : 'text-success'}">${fmt.moeda(f.valor)}</td>
+        <td>${escapeHtml(f.responsavel_pastoral_social || '—')}</td>
+        <td><button class="btn btn-outline btn-sm btn-icon" onclick="excluirCaritativo(${f.id})" title="Excluir">🗑️</button></td>
+      </tr>
+    `).join('') || `<tr><td colspan="9"><div class="empty-state"><div class="empty-state-icon">💛</div><div class="empty-state-text">Nenhum lançamento no Fundo Caritativo</div></div></td></tr>`;
+  }
+};
+
+window.excluirCaritativo = id => {
+  if (!confirm('Excluir este lançamento do Fundo Caritativo?')) return;
+  State.fundoCaritativo = State.fundoCaritativo.filter(f => f.id !== id);
+  renderCaridade();
+  API.deleteFundoCaritativo(id).catch(() => {});
+  toast('Lançamento removido.', 'success');
+};
+
+const salvarCaritativo = async () => {
+  const form = {
+    data:           $('car-data').value,
+    tipo:           $('car-tipo').value,
+    origem_destino: $('car-origem-destino').value.trim(),
+    categoria:      $('car-categoria').value,
+    valor:          parseFloat($('car-valor').value || '0'),
+    familias_atendidas: parseInt($('car-familias').value || '0'),
+    quilos_alimentos:   parseFloat($('car-kg').value || '0'),
+    responsavel_pastoral_social: $('car-resp').value.trim(),
+    observacao_confidencial:     $('car-obs').value.trim()
+  };
+  if (!form.data || !form.origem_destino) return toast('Data e origem/destino são obrigatórios.', 'warning');
+  form.id = Date.now();
+
+  // Atualiza estado local (mascarando observação para exibição)
+  State.fundoCaritativo.unshift({ ...form, observacao_confidencial: _mascararLocal(form.observacao_confidencial) });
+
+  // Recalcula impacto local (estimativa rápida; backend recalcula com precisão)
+  const imp = State.impactoCaridade;
+  if (imp && form.tipo === 'Saída') {
+    imp.familias_mes        += form.familias_atendidas;
+    imp.familias_ano        += form.familias_atendidas;
+    imp.kg_alimentos_ano    += form.quilos_alimentos;
+    imp.total_caridade_ano  += form.valor;
+    imp.pct_pobres = imp.receita_ano > 0
+      ? Number(((imp.total_caridade_ano / imp.receita_ano) * 100).toFixed(2))
+      : 0;
+  }
+
+  closeModal('modal-caritativo');
+  ['car-origem-destino','car-valor','car-familias','car-kg','car-resp','car-obs'].forEach(id => { const el = $(id); if (el) el.value = id.endsWith('familias') || id.endsWith('kg') || id.endsWith('valor') ? '0' : ''; });
+  renderCaridade();
+  toast('Lançamento caritativo registrado!', 'success');
+  API.addFundoCaritativo(form).catch(() => {});
+};
+
+const _mascararLocal = (s) => {
+  if (!s) return '';
+  if (s.length <= 4) return '***';
+  return s.substring(0, 2) + '***' + s.substring(s.length - 2);
+};
+
+/* ══════════════════════════════════════════════════════════════
+   EVANGELIZAÇÃO — Termômetro Missionário (Doc. 105 CNBB / EG)
+   ══════════════════════════════════════════════════════════════ */
+const renderEvangelizacao = () => {
+  const t = State.termometroMissionario;
+  const metas = State.metasEvangelizacao || [];
+  if (!t) return;
+
+  $('miss-partilha-valor').textContent = fmt.moeda(t.partilha_ad_extra);
+  $('miss-pct-partilha').textContent   = fmt.pct(t.pct_partilha);
+  $('miss-num-metas').textContent      = metas.length;
+
+  const meta = Number(t.meta_pct_partilha || 5);
+  const elMeta = $('miss-pct-meta');
+  if (elMeta) {
+    const ok = t.pct_partilha >= meta;
+    elMeta.textContent = `Meta diocesana: ≥${meta}% — ${ok ? '✅' : '⚠️'}`;
+    elMeta.className   = 'kpi-trend ' + (ok ? 'text-success' : 'text-danger');
+  }
+
+  // Gauge
+  const gauge = Math.min(Math.round((t.pct_partilha / Math.max(meta, 1)) * 100), 100);
+  Charts.renderGauge('gauge-missionario', gauge, gauge >= 100 ? '#27ae60' : '#6c3fc5');
+  const gLabel = $('gauge-missionario-label');
+  if (gLabel) gLabel.textContent = fmt.pct(t.pct_partilha);
+
+  // Categorias ad extra
+  const cats = $('categorias-ad-extra');
+  if (cats) {
+    cats.innerHTML = (t.categorias_ad_extra || []).map(c =>
+      `<span class="badge badge-purple">${escapeHtml(c)}</span>`).join('');
+  }
+
+  // Metas evangelizadoras (cards-progresso)
+  const grid = $('metas-evang-grid');
+  if (grid) {
+    grid.innerHTML = metas.map(m => {
+      const pct = Math.min(Math.round((Number(m.realizado) / Math.max(Number(m.meta_numerica), 1)) * 100), 100);
+      const barClass = pct >= 100 ? 'success' : pct >= 50 ? '' : 'danger';
+      return `
+        <div class="meta-card">
+          <div class="meta-header">
+            <div class="meta-emoji">🌱</div>
+            <div class="meta-info">
+              <div class="meta-title">${escapeHtml(m.titulo)}</div>
+              <div class="meta-desc">${escapeHtml(m.descricao || '')}</div>
+            </div>
+            <span class="meta-status ativa">${escapeHtml(m.indicador)}</span>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-label">
+              <span>${m.realizado} / ${m.meta_numerica}</span>
+              <span class="meta-amount">${fmt.pct(pct)}</span>
+            </div>
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill ${barClass}" style="width:${pct}%"></div>
+            </div>
+          </div>
+          <div class="meta-footer">
+            <span>Período: <strong>${escapeHtml(m.periodo || '—')}</strong></span>
+            <span>Resp.: ${escapeHtml(m.responsavel_pastoral || '—')}</span>
+          </div>
+          <div class="flex gap-1 mt-2">
+            <button class="btn btn-outline btn-sm btn-icon" onclick="excluirMetaEvang(${m.id})" title="Excluir">🗑️</button>
+          </div>
+        </div>`;
+    }).join('') || `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">🌍</div><div class="empty-state-text">Nenhuma meta missionária cadastrada</div></div>`;
+  }
+};
+
+window.excluirMetaEvang = id => {
+  if (!confirm('Excluir esta meta missionária?')) return;
+  State.metasEvangelizacao = State.metasEvangelizacao.filter(m => m.id !== id);
+  renderEvangelizacao();
+  API.deleteMetaEvangelizacao(id).catch(() => {});
+  toast('Meta excluída.', 'success');
+};
+
+const salvarMetaEvang = async () => {
+  const form = {
+    titulo:        $('evang-titulo').value.trim(),
+    descricao:     $('evang-descricao').value.trim(),
+    indicador:     $('evang-indicador').value,
+    meta_numerica: parseInt($('evang-meta-num').value || '0'),
+    realizado:     parseInt($('evang-realizado').value || '0'),
+    periodo:       $('evang-periodo').value.trim(),
+    responsavel_pastoral: $('evang-resp').value.trim()
+  };
+  if (!form.titulo || !form.meta_numerica) return toast('Título e meta numérica são obrigatórios.', 'warning');
+  form.id = Date.now();
+  State.metasEvangelizacao.push(form);
+  closeModal('modal-meta-evang');
+  ['evang-titulo','evang-descricao','evang-meta-num','evang-realizado','evang-periodo','evang-resp'].forEach(id => { const el = $(id); if (el) el.value = ''; });
+  renderEvangelizacao();
+  toast('Meta evangelizadora registrada!', 'success');
+  API.addMetaEvangelizacao(form).catch(() => {});
+};
+
+/* ══════════════════════════════════════════════════════════════
+   CONSELHO ECONÔMICO — atas (cân. 537)
+   ══════════════════════════════════════════════════════════════ */
+const renderConselho = () => {
+  const lista = State.conselhoEconomico || [];
+  const tbody = $('tbody-conselho');
+  if (!tbody) return;
+  tbody.innerHTML = lista.map(a => `
+    <tr>
+      <td>${fmt.data(a.data)}</td>
+      <td><span class="badge badge-blue">${escapeHtml(a.tipo)}</span></td>
+      <td>${escapeHtml(a.pauta || '')}</td>
+      <td>${escapeHtml(a.participantes || '')}</td>
+      <td>${escapeHtml(a.deliberacoes || '')}</td>
+      <td><code class="hash-badge" title="SHA-256 da ata">${escapeHtml(String(a.assinatura_hash || '').substring(0, 12))}…</code></td>
+      <td><button class="btn btn-outline btn-sm btn-icon" onclick="excluirAta(${a.id})" title="Excluir">🗑️</button></td>
+    </tr>
+  `).join('') || `<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">⚖️</div><div class="empty-state-text">Nenhuma ata registrada — o CAE é exigido pelo cân. 537.</div></div></td></tr>`;
+};
+
+window.excluirAta = id => {
+  if (!confirm('Excluir esta ata do Conselho Econômico?')) return;
+  State.conselhoEconomico = State.conselhoEconomico.filter(a => a.id !== id);
+  renderConselho();
+  API.deleteConselhoEconomico(id).catch(() => {});
+};
+
+/** Calcula SHA-256 hex no browser (Web Crypto). Usado para a assinatura local. */
+const _sha256Hex = async (texto) => {
+  if (!window.crypto || !window.crypto.subtle) return 'no-crypto';
+  const enc = new TextEncoder().encode(texto);
+  const buf = await window.crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
+const salvarAtaConselho = async () => {
+  const form = {
+    data:          $('cons-data').value,
+    tipo:          $('cons-tipo').value,
+    pauta:         $('cons-pauta').value.trim(),
+    participantes: $('cons-participantes').value.trim(),
+    deliberacoes:  $('cons-deliberacoes').value.trim(),
+    anexo_url:     $('cons-anexo').value.trim()
+  };
+  if (!form.data || !form.pauta) return toast('Data e pauta são obrigatórios.', 'warning');
+  form.id = Date.now();
+  const conteudo = `${form.id}|${form.data}|${form.tipo}|${form.pauta}|${form.deliberacoes}|${new Date().toISOString()}`;
+  form.assinatura_hash = await _sha256Hex(conteudo);
+
+  State.conselhoEconomico.unshift(form);
+  closeModal('modal-conselho');
+  ['cons-pauta','cons-participantes','cons-deliberacoes','cons-anexo'].forEach(id => { const el = $(id); if (el) el.value = ''; });
+  renderConselho();
+  toast('Ata salva com assinatura digital (SHA-256).', 'success');
+  API.addConselhoEconomico(form).catch(() => {});
+};
+
+/* ══════════════════════════════════════════════════════════════
+   PATRIMÔNIO — Manutenção (cân. 1284) + Inventário (cân. 1283)
+   ══════════════════════════════════════════════════════════════ */
+const renderPatrimonio = () => {
+  const itens = State.manutencaoPatrimonial || [];
+  const tbody = $('tbody-manutencao');
+  if (tbody) {
+    tbody.innerHTML = itens.map(i => {
+      const cls = i.atrasada ? 'badge-red' : i.alerta ? 'badge-gold' : i.status === 'concluida' ? 'badge-green' : 'badge-blue';
+      const lbl = i.atrasada ? '⚠️ Atrasada' : i.alerta ? '⏰ Próximos 30d' : (i.status || 'planejada');
+      return `
+        <tr>
+          <td>${escapeHtml(i.bem)}</td>
+          <td>${escapeHtml(i.descricao || '')}</td>
+          <td>${i.ultima_revisao ? fmt.data(i.ultima_revisao) : '—'}</td>
+          <td>${i.proxima_revisao ? fmt.data(i.proxima_revisao) : '—'}</td>
+          <td>${fmt.moeda(i.custo_estimado || 0)}</td>
+          <td><span class="badge ${cls}">${lbl}</span></td>
+          <td><button class="btn btn-outline btn-sm btn-icon" onclick="excluirManutencao(${i.id})" title="Excluir">🗑️</button></td>
+        </tr>`;
+    }).join('') || `<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">🛠️</div><div class="empty-state-text">Nenhum item de manutenção</div></div></td></tr>`;
+  }
+
+  const inv = State.inventario || [];
+  const tbody2 = $('tbody-inventario');
+  if (tbody2) {
+    tbody2.innerHTML = inv.map(b => `
+      <tr>
+        <td><span class="badge badge-purple">${escapeHtml(b.tipo)}</span></td>
+        <td>${escapeHtml(b.descricao)}</td>
+        <td>${b.data_aquisicao ? fmt.data(b.data_aquisicao) : '—'}</td>
+        <td>${fmt.moeda(b.valor || 0)}</td>
+        <td>${escapeHtml(b.estado_conservacao || '—')}</td>
+        <td>${escapeHtml(b.localizacao || '—')}</td>
+        <td><button class="btn btn-outline btn-sm btn-icon" onclick="excluirInventario(${b.id})" title="Excluir">🗑️</button></td>
+      </tr>
+    `).join('') || `<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">Inventário vazio (cân. 1283 2° exige inventário de bens)</div></div></td></tr>`;
+  }
+};
+
+window.excluirManutencao = id => {
+  if (!confirm('Excluir este item de manutenção?')) return;
+  State.manutencaoPatrimonial = State.manutencaoPatrimonial.filter(i => i.id !== id);
+  renderPatrimonio();
+  API.deleteManutencaoPatrimonial(id).catch(() => {});
+};
+
+window.excluirInventario = id => {
+  if (!confirm('Excluir este bem do inventário?')) return;
+  State.inventario = State.inventario.filter(b => b.id !== id);
+  renderPatrimonio();
+  API.deleteInventario(id).catch(() => {});
+};
+
+const salvarManutencao = () => {
+  const form = {
+    bem:             $('mant-bem').value,
+    descricao:       $('mant-descricao').value.trim(),
+    ultima_revisao:  $('mant-ultima').value,
+    proxima_revisao: $('mant-proxima').value,
+    custo_estimado:  parseFloat($('mant-custo').value || '0'),
+    status:          $('mant-status').value
+  };
+  if (!form.bem || !form.descricao || !form.proxima_revisao) {
+    return toast('Bem, descrição e próxima revisão são obrigatórios.', 'warning');
+  }
+  form.id = Date.now();
+  // Cálculo local de alerta/atraso para exibição imediata
+  const diff = (new Date(form.proxima_revisao) - new Date()) / (1000 * 60 * 60 * 24);
+  form.atrasada = diff < 0;
+  form.alerta   = diff >= 0 && diff <= 30;
+  State.manutencaoPatrimonial.unshift(form);
+  closeModal('modal-manutencao');
+  ['mant-descricao','mant-ultima','mant-proxima','mant-custo'].forEach(id => { const el = $(id); if (el) el.value = ''; });
+  renderPatrimonio();
+  toast('Item de manutenção salvo!', 'success');
+  API.addManutencaoPatrimonial(form).catch(() => {});
+};
+
+const salvarInventario = () => {
+  const form = {
+    tipo:               $('inv-tipo').value,
+    descricao:          $('inv-descricao').value.trim(),
+    data_aquisicao:     $('inv-aquisicao').value,
+    valor:              parseFloat($('inv-valor').value || '0'),
+    estado_conservacao: $('inv-estado').value,
+    localizacao:        $('inv-localizacao').value.trim()
+  };
+  if (!form.descricao) return toast('Descrição é obrigatória.', 'warning');
+  form.id = Date.now();
+  State.inventario.unshift(form);
+  closeModal('modal-inventario');
+  ['inv-descricao','inv-aquisicao','inv-valor','inv-localizacao'].forEach(id => { const el = $(id); if (el) el.value = id === 'inv-valor' ? '0' : ''; });
+  renderPatrimonio();
+  toast('Bem registrado no inventário!', 'success');
+  API.addInventario(form).catch(() => {});
+};
+
+/* ══════════════════════════════════════════════════════════════
+   TRANSPARÊNCIA PÚBLICA — cân. 1287 §2
+   ══════════════════════════════════════════════════════════════ */
+const renderTransparencia = () => {
+  const fin = State.financeiro;
+  const imp = State.impactoCaridade;
+  const t   = State.termometroMissionario;
+  const balancetes = State.prestacaoContas || [];
+  if (!fin || !imp || !t) return;
+
+  $('tp-receita-ano').textContent = fmt.moeda(fin.receita_ano);
+  $('tp-despesa-ano').textContent = fmt.moeda(fin.despesa_ano);
+  $('tp-saldo-ano').textContent   = fmt.moeda(fin.saldo_ano);
+  $('tp-pct-pobres').textContent  = fmt.pct(imp.pct_pobres);
+  $('tp-pct-partilha').textContent = fmt.pct(t.pct_partilha);
+  $('tp-kg-alimentos').textContent = (Number(imp.kg_alimentos_ano) || 0).toLocaleString('pt-BR') + ' kg';
+
+  const hist = fin.historico_meses || [];
+  Charts.renderBarras('chart-tp-barras', hist.map(h => h.mes), hist.map(h => h.receita), hist.map(h => h.despesa));
+  Charts.renderRosca('chart-tp-rosca',
+    fin.distribuicao.map(d => d.categoria),
+    fin.distribuicao.map(d => d.valor),
+    fin.distribuicao.map(d => d.cor)
+  );
+
+  const tbody = $('tbody-balancetes');
+  if (tbody) {
+    tbody.innerHTML = balancetes.filter(b => b.publicado === true || b.publicado === 'true').map(b => `
+      <tr>
+        <td><strong>${escapeHtml(b.periodo)}</strong></td>
+        <td class="text-success">${fmt.moeda(b.receita)}</td>
+        <td class="text-danger">${fmt.moeda(b.despesa)}</td>
+        <td class="fw-bold ${b.saldo >= 0 ? 'text-success' : 'text-danger'}">${fmt.moeda(b.saldo)}</td>
+        <td>${b.data_publicacao ? new Date(b.data_publicacao).toLocaleDateString('pt-BR') : '—'}</td>
+      </tr>
+    `).join('') || `<tr><td colspan="5"><div class="empty-state"><div class="empty-state-icon">📑</div><div class="empty-state-text">Nenhum balancete publicado ainda</div></div></td></tr>`;
+  }
+
+  const grid = $('tp-metas-missionarias');
+  if (grid) {
+    grid.innerHTML = (t.metas || []).map(m => {
+      const pct = Math.min(Math.round((Number(m.realizado) / Math.max(Number(m.meta_numerica), 1)) * 100), 100);
+      return `
+        <div class="meta-card">
+          <div class="meta-header">
+            <div class="meta-emoji">🌱</div>
+            <div class="meta-info">
+              <div class="meta-title">${escapeHtml(m.titulo)}</div>
+              <div class="meta-desc">${escapeHtml(m.indicador)}</div>
+            </div>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-label">
+              <span>${m.realizado} / ${m.meta_numerica}</span>
+              <span class="meta-amount">${fmt.pct(pct)}</span>
+            </div>
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" style="width:${pct}%"></div>
+            </div>
+          </div>
+          <div class="meta-footer"><span>Período: ${escapeHtml(m.periodo || '—')}</span></div>
+        </div>`;
+    }).join('') || `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">🌍</div><div class="empty-state-text">Sem metas missionárias publicadas</div></div>`;
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   TEMPO LITÚRGICO — banda no topo
+   ══════════════════════════════════════════════════════════════ */
+const _diasDePascoa = (ano) => {
+  // Algoritmo de Meeus/Jones/Butcher para Páscoa Gregoriana
+  const a = ano % 19;
+  const b = Math.floor(ano / 100);
+  const c = ano % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const L = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * L) / 451);
+  const mes = Math.floor((h + L - 7 * m + 114) / 31);
+  const dia = ((h + L - 7 * m + 114) % 31) + 1;
+  return new Date(ano, mes - 1, dia);
+};
+
+const detectarTempoLiturgico = (hoje = new Date()) => {
+  const ano    = hoje.getFullYear();
+  const pascoa = _diasDePascoa(ano);
+  const dia = (d) => Math.floor(d.getTime() / 86400000);
+  const t = dia(hoje);
+
+  // Quarta-feira de Cinzas = Páscoa - 46 dias
+  const cinzas = dia(pascoa) - 46;
+  // Tríduo Pascal: quinta-feira santa - sábado santo
+  const tridouIni = dia(pascoa) - 3;
+  // Pentecostes = Páscoa + 49 dias
+  const pentecostes = dia(pascoa) + 49;
+  // Advento = 4º domingo antes de 25/dez
+  const natal = dia(new Date(ano, 11, 25));
+  const dDoNatal = new Date(ano, 11, 25).getDay(); // 0=dom..6=sáb
+  const adventoIni = natal - (dDoNatal === 0 ? 28 : (21 + dDoNatal));
+  // Natal: 25/dez até 6/jan (Epifania) ou Batismo do Senhor
+  const epifania = dia(new Date(ano + 1, 0, 6));
+
+  if (t >= adventoIni && t < natal) return { nome: 'Advento', cor: '#6c3fc5' };
+  if (t >= natal || t <= dia(new Date(ano, 0, 13))) return { nome: 'Natal', cor: '#f5a623' };
+  if (t >= cinzas && t < tridouIni) return { nome: 'Quaresma', cor: '#9b59b6' };
+  if (t >= tridouIni && t < dia(pascoa)) return { nome: 'Tríduo Pascal', cor: '#7f1d1d' };
+  if (t >= dia(pascoa) && t <= pentecostes) return { nome: 'Páscoa', cor: '#27ae60' };
+  return { nome: 'Tempo Comum', cor: '#27ae60' };
+};
+
+const aplicarBandaLiturgica = () => {
+  const el = $('liturgical-band');
+  if (!el) return;
+  const t = detectarTempoLiturgico();
+  el.textContent = '✝️ ' + t.nome;
+  el.style.background = t.cor;
+};
+
+/* ══════════════════════════════════════════════════════════════
+   ESCAPE HTML – proteção contra XSS em conteúdo dinâmico
+   ══════════════════════════════════════════════════════════════ */
+const escapeHtml = (s) => {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+
 const carregarDados = async () => {
   // Tentar carregar do Apps Script; usar demo se não disponível
-  const [fin, lanc, metas, vols, mems] = await Promise.all([
+  const [fin, lanc, metas, vols, mems, fundo, imp, metasEv, term, cae, mant, inv, prest] = await Promise.all([
     API.getFinanceiro(),
     API.getLancamentos(),
     API.getMetas(),
     API.getVoluntarios(),
-    API.getMembros()
+    API.getMembros(),
+    API.getFundoCaritativo().catch(() => null),
+    API.getImpactoCaridade().catch(() => null),
+    API.getMetasEvangelizacao().catch(() => null),
+    API.getTermometroMissionario().catch(() => null),
+    API.getConselhoEconomico().catch(() => null),
+    API.getManutencaoPatrimonial().catch(() => null),
+    API.getInventario().catch(() => null),
+    API.getPrestacaoContas().catch(() => null)
   ]);
 
-  State.financeiro   = fin    || DEMO_DATA.financeiro;
-  State.lancamentos  = lanc   || DEMO_DATA.lancamentos;
-  State.metas        = metas  || DEMO_DATA.metas;
-  State.voluntarios  = vols   || DEMO_DATA.voluntarios;
-  State.membros      = mems   || DEMO_DATA.membros;
-  State.paroquia     = DEMO_DATA.paroquia;
+  State.financeiro             = fin     || DEMO_DATA.financeiro;
+  State.lancamentos            = lanc    || DEMO_DATA.lancamentos;
+  State.metas                  = metas   || DEMO_DATA.metas;
+  State.voluntarios            = vols    || DEMO_DATA.voluntarios;
+  State.membros                = mems    || DEMO_DATA.membros;
+  State.paroquia               = DEMO_DATA.paroquia;
+  State.fundoCaritativo        = fundo   || DEMO_DATA.fundoCaritativo       || [];
+  State.impactoCaridade        = imp     || DEMO_DATA.impactoCaridade       || null;
+  State.metasEvangelizacao     = metasEv || DEMO_DATA.metasEvangelizacao    || [];
+  State.termometroMissionario  = term    || DEMO_DATA.termometroMissionario || null;
+  State.conselhoEconomico      = cae     || DEMO_DATA.conselhoEconomico     || [];
+  State.manutencaoPatrimonial  = mant    || DEMO_DATA.manutencaoPatrimonial || [];
+  State.inventario             = inv     || DEMO_DATA.inventario            || [];
+  State.prestacaoContas        = prest   || DEMO_DATA.prestacaoContas       || [];
 
   if (!fin) toast('Modo demonstração ativo – dados de exemplo carregados.', 'info', 5000);
 };
@@ -883,6 +1446,50 @@ const bindEvents = () => {
 
   $('btn-salvar-config')?.addEventListener('click', salvarConfiguracoes);
 
+  // ─── Pastoral: Caridade ──────────────────────────────────────
+  $('btn-novo-caritativo')?.addEventListener('click', () => {
+    $('car-data').value = new Date().toISOString().split('T')[0];
+    openModal('modal-caritativo');
+  });
+  $('btn-salvar-caritativo')?.addEventListener('click', salvarCaritativo);
+
+  // ─── Pastoral: Evangelização ─────────────────────────────────
+  $('btn-nova-meta-evang')?.addEventListener('click', () => {
+    ['evang-titulo','evang-descricao','evang-meta-num','evang-realizado','evang-periodo','evang-resp'].forEach(id => { const el = $(id); if (el) el.value = ''; });
+    $('evang-realizado').value = '0';
+    $('evang-periodo').value = String(new Date().getFullYear());
+    openModal('modal-meta-evang');
+  });
+  $('btn-salvar-evang')?.addEventListener('click', salvarMetaEvang);
+
+  // ─── Pastoral: Conselho Econômico ────────────────────────────
+  $('btn-nova-ata')?.addEventListener('click', () => {
+    $('cons-data').value = new Date().toISOString().split('T')[0];
+    openModal('modal-conselho');
+  });
+  $('btn-salvar-conselho')?.addEventListener('click', salvarAtaConselho);
+
+  // ─── Pastoral: Patrimônio ────────────────────────────────────
+  $('btn-novo-manutencao')?.addEventListener('click', () => {
+    ['mant-descricao','mant-ultima','mant-proxima','mant-custo'].forEach(id => { const el = $(id); if (el) el.value = ''; });
+    openModal('modal-manutencao');
+  });
+  $('btn-salvar-manutencao')?.addEventListener('click', salvarManutencao);
+
+  $('btn-novo-inventario')?.addEventListener('click', () => {
+    ['inv-descricao','inv-aquisicao','inv-valor','inv-localizacao'].forEach(id => { const el = $(id); if (el) el.value = ''; });
+    openModal('modal-inventario');
+  });
+  $('btn-salvar-inventario')?.addEventListener('click', salvarInventario);
+
+  // ─── Versículo rotativo (Dimensão Religiosa) ─────────────────
+  $('versiculo-trocar')?.addEventListener('click', () => {
+    const total = (DEMO_DATA.versiculos || []).length;
+    if (!total) return;
+    State.versiculoIdx = (State.versiculoIdx + 1) % total;
+    renderVersiculo();
+  });
+
   // Filtros de lançamentos
   document.querySelectorAll('.filter-lancamentos').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -947,6 +1554,7 @@ const bindEvents = () => {
 window.addEventListener('DOMContentLoaded', async () => {
   await carregarDados();
   bindEvents();
+  aplicarBandaLiturgica();
 
   // Ocultar tela de loading
   setTimeout(() => {

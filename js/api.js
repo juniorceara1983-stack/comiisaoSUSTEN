@@ -74,12 +74,57 @@ const API = (() => {
   const getConfig = ()              => _fetch('getConfig');
   const saveConfig = (data)         => _post('saveConfig', data);
 
+  // ── Fundo Caritativo (Dimensão Caritativa) ────────────────────
+  const getFundoCaritativo    = ()       => _fetch('getFundoCaritativo');
+  const getImpactoCaridade    = ()       => _fetch('getImpactoCaridade');
+  const addFundoCaritativo    = (data)   => _post('addFundoCaritativo', data);
+  const updateFundoCaritativo = (data)   => _post('updateFundoCaritativo', data);
+  const deleteFundoCaritativo = (id)     => _post('deleteFundoCaritativo', { id });
+
+  // ── Metas de Evangelização (Dimensão Missionária) ─────────────
+  const getMetasEvangelizacao    = ()    => _fetch('getMetasEvangelizacao');
+  const getTermometroMissionario = ()    => _fetch('getTermometroMissionario');
+  const addMetaEvangelizacao    = (data) => _post('addMetaEvangelizacao', data);
+  const updateMetaEvangelizacao = (data) => _post('updateMetaEvangelizacao', data);
+  const deleteMetaEvangelizacao = (id)   => _post('deleteMetaEvangelizacao', { id });
+
+  // ── Conselho Econômico (cân. 537) ─────────────────────────────
+  const getConselhoEconomico    = ()     => _fetch('getConselhoEconomico');
+  const addConselhoEconomico    = (data) => _post('addConselhoEconomico', data);
+  const updateConselhoEconomico = (data) => _post('updateConselhoEconomico', data);
+  const deleteConselhoEconomico = (id)   => _post('deleteConselhoEconomico', { id });
+
+  // ── Manutenção Patrimonial (cân. 1284) ────────────────────────
+  const getManutencaoPatrimonial    = ()     => _fetch('getManutencaoPatrimonial');
+  const addManutencaoPatrimonial    = (data) => _post('addManutencaoPatrimonial', data);
+  const updateManutencaoPatrimonial = (data) => _post('updateManutencaoPatrimonial', data);
+  const deleteManutencaoPatrimonial = (id)   => _post('deleteManutencaoPatrimonial', { id });
+
+  // ── Inventário (cân. 1283 2°) ─────────────────────────────────
+  const getInventario    = ()     => _fetch('getInventario');
+  const addInventario    = (data) => _post('addInventario', data);
+  const updateInventario = (data) => _post('updateInventario', data);
+  const deleteInventario = (id)   => _post('deleteInventario', { id });
+
+  // ── Prestação de Contas (cân. 1287) ───────────────────────────
+  const getPrestacaoContas   = ()     => _fetch('getPrestacaoContas');
+  const publicarBalancete    = (data) => _post('publicarBalancete', data);
+  const getTransparenciaPublica = () => _fetch('getTransparenciaPublica');
+
   return {
     getFinanceiro, getLancamentos, addLancamento, deleteLancamento,
     getMetas, addMeta, updateMeta, deleteMeta,
     getVoluntarios, addVoluntario, updateVoluntario, deleteVoluntario,
     getMembros, addMembro, updateMembro, deleteMembro, registrarDizimo,
-    getRelatorio, getConfig, saveConfig
+    getRelatorio, getConfig, saveConfig,
+    getFundoCaritativo, getImpactoCaridade,
+    addFundoCaritativo, updateFundoCaritativo, deleteFundoCaritativo,
+    getMetasEvangelizacao, getTermometroMissionario,
+    addMetaEvangelizacao, updateMetaEvangelizacao, deleteMetaEvangelizacao,
+    getConselhoEconomico, addConselhoEconomico, updateConselhoEconomico, deleteConselhoEconomico,
+    getManutencaoPatrimonial, addManutencaoPatrimonial, updateManutencaoPatrimonial, deleteManutencaoPatrimonial,
+    getInventario, addInventario, updateInventario, deleteInventario,
+    getPrestacaoContas, publicarBalancete, getTransparenciaPublica
   };
 })();
 
@@ -188,5 +233,102 @@ const DEMO_DATA = {
       emoji: '🎉',
       texto: `🎉 *NOTÍCIA MARAVILHOSA!*\n\nOlá, {NOME}!\n\nA meta *"{META}"* foi atingida! 🙌 Isso só foi possível graças à generosidade de cada um de vocês.\n\nArrecadamos juntos *R$ {VALOR}*. Gloria a Deus!\n\n_Paróquia Nossa Senhora do Amparo_ ✝️`
     }
+  ],
+
+  /* ─── Versículos rotativos para o Dízimo Digital ────────────────
+     Dimensão Religiosa do dízimo (Doc. 106 CNBB).            */
+  versiculos: [
+    { ref: '2Cor 9:7',   texto: 'Cada um contribua segundo propôs no seu coração; não com tristeza, ou por necessidade; porque Deus ama ao que dá com alegria.' },
+    { ref: 'Mal 3:10',   texto: 'Trazei todos os dízimos à casa do tesouro... e provai-me nisto, diz o Senhor dos Exércitos.' },
+    { ref: 'Lc 21:1-4',  texto: 'Esta pobre viúva deu mais do que todos; porque deu de sua pobreza, tudo o que tinha para o seu sustento.' },
+    { ref: 'At 2:44-45', texto: 'Todos os que criam estavam juntos e tinham tudo em comum. Vendiam suas propriedades e bens, distribuindo-os entre todos, conforme cada um tinha necessidade.' },
+    { ref: 'Pr 3:9',     texto: 'Honra ao Senhor com os teus bens, e com as primícias de toda a tua renda.' },
+    { ref: 'Mt 6:21',    texto: 'Onde estiver o teu tesouro, aí estará também o teu coração.' }
+  ],
+
+  /* ─── Mensagens de agradecimento alternativas (rotação) ─────── */
+  mensagensAgradecimento: [
+    { texto: 'Que o Senhor multiplique os frutos da sua partilha. Sua oferta de gratidão sustenta a missão da nossa comunidade. 🙏', versiculo: '"Daí, e dar-se-vos-á" (Lc 6:38)' },
+    { texto: 'Sua generosidade é semente do Reino. Que Deus abençoe sua família com paz e abundância. ✝️',                      versiculo: '"Deus ama a quem dá com alegria" (2Cor 9:7)' },
+    { texto: 'Recebemos sua oferta com alegria. Em nome de toda a comunidade, agradecemos sua corresponsabilidade. 💛',         versiculo: '"Levai as cargas uns dos outros" (Gl 6:2)' },
+    { texto: 'Que a partilha de seus bens seja também partilha de fé e esperança. Conte com nossa oração diária por você. 🙏',  versiculo: '"Onde estiver o teu tesouro, aí estará o teu coração" (Mt 6:21)' }
+  ],
+
+  /* ─── Fundo Caritativo (Dimensão Caritativa) – EG 198 ───────── */
+  fundoCaritativo: [
+    { id: 1, data: '2026-04-12', tipo: 'Saída',  origem_destino: 'Família assistida (Setor 3)', categoria: 'Alimentos',   familias_atendidas: 1, quilos_alimentos: 25, valor: 250, responsavel_pastoral_social: 'SSVP', observacao_confidencial: 'fa***ia' },
+    { id: 2, data: '2026-04-08', tipo: 'Saída',  origem_destino: 'Conta de luz – idosa',        categoria: 'Energia',     familias_atendidas: 1, quilos_alimentos: 0,  valor: 180, responsavel_pastoral_social: 'Pastoral Social', observacao_confidencial: 'd.***os' },
+    { id: 3, data: '2026-04-05', tipo: 'Entrada',origem_destino: 'Coleta Quaresmal',            categoria: 'Outros',      familias_atendidas: 0, quilos_alimentos: 0,  valor: 1800, responsavel_pastoral_social: 'Comissão', observacao_confidencial: '' },
+    { id: 4, data: '2026-04-02', tipo: 'Saída',  origem_destino: 'Cesta básica – 5 famílias',   categoria: 'Alimentos',   familias_atendidas: 5, quilos_alimentos: 90, valor: 480, responsavel_pastoral_social: 'SSVP', observacao_confidencial: '5 ***es' },
+    { id: 5, data: '2026-03-28', tipo: 'Saída',  origem_destino: 'Medicamento – paciente',      categoria: 'Medicamentos',familias_atendidas: 1, quilos_alimentos: 0,  valor: 120, responsavel_pastoral_social: 'Pastoral da Saúde', observacao_confidencial: 'pa***te' }
+  ],
+
+  impactoCaridade: {
+    familias_mes:        7,
+    familias_ano:        58,
+    kg_alimentos_ano:    640,
+    total_caridade_ano:  9800,
+    receita_ano:         134800,
+    pct_pobres:          7.27,
+    meta_pct_pobres:     10,
+    distribuicao: [
+      { categoria: 'Alimentos',   valor: 5400 },
+      { categoria: 'Energia',     valor: 1200 },
+      { categoria: 'Medicamentos',valor: 980  },
+      { categoria: 'Aluguel',     valor: 1500 },
+      { categoria: 'Outros',      valor: 720  }
+    ]
+  },
+
+  /* ─── Metas de Evangelização (Dimensão Missionária) ─────────── */
+  metasEvangelizacao: [
+    { id: 1, titulo: 'Novos Dizimistas',        descricao: 'Conquistar 30 novos dizimistas em 2026',    indicador: 'Novos dizimistas',   meta_numerica: 30, realizado: 12, periodo: '2026', responsavel_pastoral: 'Pastoral do Dízimo' },
+    { id: 2, titulo: 'Famílias Visitadas',      descricao: 'Visitas pastorais nas casas do território', indicador: 'Famílias visitadas', meta_numerica: 200,realizado: 84, periodo: '2026', responsavel_pastoral: 'Pastoral Familiar' },
+    { id: 3, titulo: 'Catequizandos',           descricao: 'Crianças e adolescentes na catequese',      indicador: 'Catequizandos',      meta_numerica: 150,realizado: 132,periodo: '2026', responsavel_pastoral: 'Coord. Catequese' },
+    { id: 4, titulo: 'Crismandos 2026',         descricao: 'Jovens e adultos preparados para a Crisma', indicador: 'Crismandos',         meta_numerica: 40, realizado: 22, periodo: '2026', responsavel_pastoral: 'Pastoral da Juventude' },
+    { id: 5, titulo: 'Batizados',               descricao: 'Batismos celebrados no ano',                indicador: 'Batizados',          meta_numerica: 60, realizado: 18, periodo: '2026', responsavel_pastoral: 'Secretaria Paroquial' }
+  ],
+
+  termometroMissionario: {
+    receita_ano:        134800,
+    partilha_ad_extra:  4200,
+    pct_partilha:       3.12,
+    meta_pct_partilha:  5,
+    categorias_ad_extra: [
+      'Partilha Diocesana','Campanha da Evangelização','Campanha da Fraternidade',
+      'Campanha Missionária','Óbolo de São Pedro','Santa Infância'
+    ]
+  },
+
+  /* ─── Conselho de Assuntos Econômicos (Cân. 537) ────────────── */
+  conselhoEconomico: [
+    { id: 1, data: '2026-04-10', tipo: 'Reunião', pauta: 'Análise do balancete de março; planejamento da Festa de São José.', participantes: 'Pe. João, José Silva (coord.), Maria Costa, Antônio Lima, Helena Souza', deliberacoes: 'Aprovado o balancete por unanimidade. Definida verba de R$ 1.500 para a festa.', anexo_url: '', assinatura_hash: 'a1b2c3d4e5f6…' },
+    { id: 2, data: '2026-03-13', tipo: 'Reunião', pauta: 'Plano de manutenção do telhado; revisão do percentual destinado à caridade.', participantes: 'Pe. João, José Silva, Maria Costa, Helena Souza', deliberacoes: 'Orçamento aprovado em R$ 6.800. Reforço da meta de 10% para o Fundo Caritativo (EG 198).', anexo_url: '', assinatura_hash: '7f8e9d0c1b2a…' },
+    { id: 3, data: '2026-02-08', tipo: 'Ata',     pauta: 'Aprovação do orçamento anual 2026.', participantes: 'Pe. João, todo o CAE', deliberacoes: 'Orçamento anual aprovado. Encaminhamento à Cúria Diocesana.', anexo_url: '', assinatura_hash: 'aa11bb22cc33…' }
+  ],
+
+  /* ─── Manutenção Patrimonial (Cân. 1284) ────────────────────── */
+  manutencaoPatrimonial: [
+    { id: 1, bem: 'Templo',           descricao: 'Pintura externa e impermeabilização',   ultima_revisao: '2024-08-10', proxima_revisao: '2026-08-10', custo_estimado: 12000, status: 'planejada', alerta: false, atrasada: false },
+    { id: 2, bem: 'Salão Paroquial',  descricao: 'Revisão elétrica geral',                ultima_revisao: '2025-10-05', proxima_revisao: '2026-05-05', custo_estimado: 1800,  status: 'planejada', alerta: true,  atrasada: false },
+    { id: 3, bem: 'Casa Paroquial',   descricao: 'Limpeza de calhas e revisão de telhado',ultima_revisao: '2025-09-20', proxima_revisao: '2026-04-10', custo_estimado: 600,   status: 'planejada', alerta: false, atrasada: true  },
+    { id: 4, bem: 'Veículo Paroquial',descricao: 'Revisão preventiva 60.000 km',          ultima_revisao: '2026-01-15', proxima_revisao: '2026-07-15', custo_estimado: 1200,  status: 'planejada', alerta: false, atrasada: false },
+    { id: 5, bem: 'Sistema de Som',   descricao: 'Calibração e verificação de cabos',     ultima_revisao: '2026-03-01', proxima_revisao: '2026-09-01', custo_estimado: 300,   status: 'concluida',alerta: false, atrasada: false }
+  ],
+
+  /* ─── Inventário de Bens (Cân. 1283 2°) ─────────────────────── */
+  inventario: [
+    { id: 1, tipo: 'Imóvel', descricao: 'Templo paroquial',              data_aquisicao: '1957-06-12', valor: 0,      estado_conservacao: 'Bom',     localizacao: 'Sede' },
+    { id: 2, tipo: 'Imóvel', descricao: 'Casa Paroquial',                data_aquisicao: '1962-03-20', valor: 0,      estado_conservacao: 'Regular', localizacao: 'Sede' },
+    { id: 3, tipo: 'Móvel',  descricao: 'Sistema de som principal',      data_aquisicao: '2022-11-05', valor: 8500,   estado_conservacao: 'Bom',     localizacao: 'Templo' },
+    { id: 4, tipo: 'Móvel',  descricao: 'Veículo Fiat Strada',           data_aquisicao: '2021-07-15', valor: 65000,  estado_conservacao: 'Bom',     localizacao: 'Garagem' },
+    { id: 5, tipo: 'Móvel',  descricao: 'Mesa e cadeiras do refeitório', data_aquisicao: '2019-04-02', valor: 3200,   estado_conservacao: 'Regular', localizacao: 'Salão Paroquial' }
+  ],
+
+  /* ─── Prestação de Contas pública (Cân. 1287 §2) ────────────── */
+  prestacaoContas: [
+    { id: 1, periodo: '2026-03', receita: 11200, despesa: 8100, saldo: 3100, publicado: true, data_publicacao: '2026-04-05T10:00:00Z' },
+    { id: 2, periodo: '2026-02', receita: 10500, despesa: 7800, saldo: 2700, publicado: true, data_publicacao: '2026-03-04T10:00:00Z' },
+    { id: 3, periodo: '2026-01', receita: 9800,  despesa: 7200, saldo: 2600, publicado: true, data_publicacao: '2026-02-03T10:00:00Z' }
   ]
 };
