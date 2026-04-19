@@ -48,6 +48,9 @@ const PROGRESSO_MANUTENCAO_PADRAO = {
 };
 const ACOES_PERMITIDAS_FIEL = ['getSessaoUsuario', 'getFielPainel', 'getTransparenciaPublica'];
 const ACOES_PUBLICAS = ['getTransparenciaPublica', 'getParoquiasFiel', 'getFielPainelPublico', 'loginFiel'];
+const CATEGORIA_DIZIMISTA = 'Dizimista';
+const CATEGORIA_NAO_DIZIMISTA = 'Não Dizimista';
+const MS_POR_DIA = 86400000;
 
 /* ── Acesso à planilha ativa ──────────────────────────────── */
 /**
@@ -637,7 +640,7 @@ function _normalizarNomeFiel(valor) {
 }
 
 function _categoriaDizimista(categoria) {
-  return String(categoria || '').toLowerCase() === 'dizimista';
+  return String(categoria || '').toLowerCase() === String(CATEGORIA_DIZIMISTA).toLowerCase();
 }
 
 function _listarParoquiasFiel() {
@@ -712,7 +715,7 @@ function loginFiel(payload) {
         id: rows[i][idIdx],
         nome: rows[i][nomeIdx],
         telefone: _normalizarWhatsApp55(rows[i][telIdx]),
-        categoria: rows[i][catIdx] || 'Não Dizimista'
+        categoria: rows[i][catIdx] || CATEGORIA_NAO_DIZIMISTA
       };
       break;
     }
@@ -720,7 +723,7 @@ function loginFiel(payload) {
 
   if (!membro) {
     const id = Date.now();
-    const categoria = dizimista === 'sim' ? 'Dizimista' : 'Não Dizimista';
+    const categoria = dizimista === 'sim' ? CATEGORIA_DIZIMISTA : CATEGORIA_NAO_DIZIMISTA;
     sh.appendRow([id, nome, telefone, categoria, 'ativo', '—', 0, paroquia_id]);
     membro = { id: id, nome: nome, telefone: telefone, categoria: categoria };
     registrarLog('ADD', 'Fiel Cadastro', `id=${id} paroquia=${paroquia_id} categoria=${categoria}`);
@@ -763,7 +766,7 @@ function _configPorParoquia(paroquiaId) {
 
 function _conteudoPastoralDiario() {
   const data = new Date();
-  const diaAno = Math.floor((data - new Date(data.getFullYear(), 0, 0)) / 86400000);
+  const diaAno = Math.floor((data - new Date(data.getFullYear(), 0, 0)) / MS_POR_DIA);
 
   const liturgias = [
     { referencia: 'Jo 13,34', titulo: 'Mandamento do Amor', mensagem: 'Amai-vos uns aos outros como eu vos amei.' },

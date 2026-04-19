@@ -83,6 +83,8 @@ const normalizarTexto = (v = '') => String(v)
   .trim()
   .toLowerCase();
 
+const CATEGORIA_DIZIMISTA = 'Dizimista';
+
 /* ── Navegação ──────────────────────────────────────────────── */
 const navigate = pageName => {
   if (State.currentPage === pageName) return;
@@ -629,7 +631,7 @@ const renderMembros = () => {
   tbody.innerHTML = filtered.map(m => `
     <tr>
       <td>${m.nome}</td>
-      <td><span class="badge ${m.categoria === 'Dizimista' ? 'badge-purple' : m.categoria === 'Colaborador' ? 'badge-blue' : 'badge-gold'}">${m.categoria}</span></td>
+      <td><span class="badge ${m.categoria === CATEGORIA_DIZIMISTA ? 'badge-purple' : m.categoria === 'Colaborador' ? 'badge-blue' : 'badge-gold'}">${m.categoria}</span></td>
       <td><span class="badge ${m.status === 'ativo' ? 'badge-green' : 'badge-red'}">${m.status}</span></td>
       <td>${m.ultimoDizimo !== '—' ? fmt.data(m.ultimoDizimo) : '—'}</td>
       <td class="${m.valor > 0 ? 'text-accent fw-bold' : 'text-muted'}">${m.valor > 0 ? fmt.moeda(m.valor) : '—'}</td>
@@ -646,7 +648,7 @@ const renderMembros = () => {
 window.marcarComoDizimista = id => {
   const idx = State.membros.findIndex(m => m.id === id);
   if (idx === -1) return;
-  State.membros[idx].categoria = 'Dizimista';
+  State.membros[idx].categoria = CATEGORIA_DIZIMISTA;
   renderMembros();
   toast('Fiel movido para dizimistas.', 'success');
   API.updateMembro(State.membros[idx]).catch(() => {});
