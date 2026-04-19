@@ -639,7 +639,7 @@ function _normalizarNomeFiel(valor) {
   return String(valor || '').trim().toLowerCase();
 }
 
-function _categoriaDizimista(categoria) {
+function _ehCategoriaDizimista(categoria) {
   return String(categoria || '').toLowerCase() === String(CATEGORIA_DIZIMISTA).toLowerCase();
 }
 
@@ -694,7 +694,7 @@ function loginFiel(payload) {
   const dizimista = String(payload.dizimista || '').toLowerCase().trim();
   if (!nome) return { ok: false, erro: 'Informe o nome para login.' };
   if (!paroquia_id) return { ok: false, erro: 'Selecione a paróquia.' };
-  if (dizimista !== 'sim' && dizimista !== 'nao') return { ok: false, erro: 'Selecione se é dizimista.' };
+  if (dizimista !== 'sim' && dizimista !== 'nao' && dizimista !== 'não') return { ok: false, erro: 'Selecione se é dizimista.' };
   if (!telefone || !telefone.startsWith('55')) return { ok: false, erro: 'Informe um número de WhatsApp válido.' };
 
   const sh = SH(SHEETS.MEMBROS);
@@ -739,7 +739,7 @@ function loginFiel(payload) {
       nome: membro.nome,
       telefone: membro.telefone,
       categoria: membro.categoria,
-      dizimista: _categoriaDizimista(membro.categoria)
+      dizimista: _ehCategoriaDizimista(membro.categoria)
     }
   };
 }
@@ -801,7 +801,10 @@ function getFielPainelPublico(params) {
   const paroquiaId = auth.paroquia_id;
   const config = _configPorParoquia(paroquiaId);
   const metas = _lerAbaSemFiltro(SHEETS.METAS).filter(m => String(m.paroquia_id || '').trim() === paroquiaId);
-  const manutencoes = getManutencaoPatrimonial().filter(m => String(m.paroquia_id || '').trim() === paroquiaId);
+  const manutencoesBase = getManutencaoPatrimonial();
+  const manutencoes = Array.isArray(manutencoesBase)
+    ? manutencoesBase.filter(m => String(m.paroquia_id || '').trim() === paroquiaId)
+    : [];
   const recados = _lerAbaSemFiltro(SHEETS.RECADOS).filter(r => {
     const destino = _normalizarIdParoquia(r.paroquia_destino);
     const origem = _normalizarIdParoquia(r.paroquia_origem);
