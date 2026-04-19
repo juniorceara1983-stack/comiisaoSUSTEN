@@ -76,6 +76,7 @@ const API = (() => {
   // ── Configurações ─────────────────────────────────────────────
   const getConfig = ()              => _fetch('getConfig');
   const saveConfig = (data)         => _post('saveConfig', data);
+  const getSessaoUsuario = (email)  => _fetch('getSessaoUsuario', email ? { email } : {});
 
   // ── Fundo Caritativo (Dimensão Caritativa) ────────────────────
   const getFundoCaritativo    = ()       => _fetch('getFundoCaritativo');
@@ -113,13 +114,16 @@ const API = (() => {
   const getPrestacaoContas   = ()     => _fetch('getPrestacaoContas');
   const publicarBalancete    = (data) => _post('publicarBalancete', data);
   const getTransparenciaPublica = () => _fetch('getTransparenciaPublica');
+  const getFielPainel = (email) => _fetch('getFielPainel', email ? { email } : {});
+  const getRecados = () => _fetch('getRecados');
+  const addRecado = (data) => _post('addRecado', data);
 
   return {
     getFinanceiro, getLancamentos, addLancamento, deleteLancamento,
     getMetas, addMeta, updateMeta, deleteMeta,
     getVoluntarios, addVoluntario, updateVoluntario, deleteVoluntario,
     getMembros, addMembro, updateMembro, deleteMembro, registrarDizimo,
-    getRelatorio, getConfig, saveConfig,
+    getRelatorio, getConfig, saveConfig, getSessaoUsuario,
     getFundoCaritativo, getImpactoCaridade,
     addFundoCaritativo, updateFundoCaritativo, deleteFundoCaritativo,
     getMetasEvangelizacao, getTermometroMissionario,
@@ -127,7 +131,8 @@ const API = (() => {
     getConselhoEconomico, addConselhoEconomico, updateConselhoEconomico, deleteConselhoEconomico,
     getManutencaoPatrimonial, addManutencaoPatrimonial, updateManutencaoPatrimonial, deleteManutencaoPatrimonial,
     getInventario, addInventario, updateInventario, deleteInventario,
-    getPrestacaoContas, publicarBalancete, getTransparenciaPublica
+    getPrestacaoContas, publicarBalancete, getTransparenciaPublica,
+    getFielPainel, getRecados, addRecado
   };
 })();
 
