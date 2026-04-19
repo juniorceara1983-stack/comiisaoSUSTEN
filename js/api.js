@@ -3,10 +3,12 @@
    ============================================================ */
 
 const API = (() => {
-  // ── Substitua pela URL do seu Web App do Google Apps Script ──
-  const BASE_URL = window.SUSTEN_CONFIG?.appsScriptUrl || '';
+  // URL resolvida dinamicamente a cada requisição, permitindo alteração
+  // na página de Configurações sem exigir reload da PWA.
+  const _baseUrl = () => (window.SUSTEN_CONFIG && window.SUSTEN_CONFIG.appsScriptUrl) || '';
 
   const _fetch = async (action, payload = {}) => {
+    const BASE_URL = _baseUrl();
     if (!BASE_URL) {
       console.warn('[API] Apps Script URL não configurada – usando dados demo.');
       return null;
@@ -23,6 +25,7 @@ const API = (() => {
   };
 
   const _post = async (action, body = {}) => {
+    const BASE_URL = _baseUrl();
     if (!BASE_URL) {
       console.warn('[API] Apps Script URL não configurada – usando dados demo.');
       return null;

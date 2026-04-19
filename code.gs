@@ -39,7 +39,22 @@ const CATEGORIAS_PARTILHA_AD_EXTRA = [
 ];
 
 /* ── Acesso à planilha ativa ──────────────────────────────── */
-const SS  = () => SpreadsheetApp.getActiveSpreadsheet();
+/**
+ * ID da planilha Google Sheets utilizada pelo SUSTEN.
+ * Permite que este Apps Script rode como projeto autônomo
+ * (standalone), abrindo a planilha por ID. Se o script estiver
+ * vinculado ("container-bound") à própria planilha, o uso de
+ * getActiveSpreadsheet() é preservado como fallback.
+ */
+const SPREADSHEET_ID = '11iFIwuwR2R0XPiIdnN34FF2HZT7bHIlM3IlXi2NvTMU';
+
+const SS  = () => {
+  try {
+    const ativo = SpreadsheetApp.getActiveSpreadsheet();
+    if (ativo) return ativo;
+  } catch (_) { /* script standalone – sem planilha ativa */ }
+  return SpreadsheetApp.openById(SPREADSHEET_ID);
+};
 const SH  = (nome) => SS().getSheetByName(nome) || SS().insertSheet(nome);
 
 /* ══════════════════════════════════════════════════════════
