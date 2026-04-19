@@ -650,7 +650,7 @@ window.marcarComoDizimista = id => {
   if (idx === -1) return;
   State.membros[idx].categoria = CATEGORIA_DIZIMISTA;
   renderMembros();
-  toast('Fiel movido para dizimistas.', 'success');
+  toast('Fiel convertido para dizimista.', 'success');
   API.updateMembro(State.membros[idx]).catch(() => {});
 };
 

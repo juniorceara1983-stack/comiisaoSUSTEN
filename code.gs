@@ -671,7 +671,7 @@ function _autenticarFiel(payload) {
   const paroquia_id = String(payload.paroquia_id || '').trim();
   if (!nome) return { ok: false, erro: 'Informe o nome para login.' };
   if (!paroquia_id) return { ok: false, erro: 'Selecione a paróquia.' };
-  if (!senha || !senha.startsWith('55')) return { ok: false, erro: 'A senha deve ser o WhatsApp com código 55.' };
+  if (!senha || !senha.startsWith('55')) return { ok: false, erro: 'Informe um número de WhatsApp válido.' };
 
   const membros = _lerAbaSemFiltro(SHEETS.MEMBROS);
   const nomeNorm = _normalizarNomeFiel(nome);
@@ -695,7 +695,7 @@ function loginFiel(payload) {
   if (!nome) return { ok: false, erro: 'Informe o nome para login.' };
   if (!paroquia_id) return { ok: false, erro: 'Selecione a paróquia.' };
   if (dizimista !== 'sim' && dizimista !== 'nao') return { ok: false, erro: 'Selecione se é dizimista.' };
-  if (!telefone || !telefone.startsWith('55')) return { ok: false, erro: 'Informe o WhatsApp com código 55.' };
+  if (!telefone || !telefone.startsWith('55')) return { ok: false, erro: 'Informe um número de WhatsApp válido.' };
 
   const sh = SH(SHEETS.MEMBROS);
   const rows = sh.getDataRange().getValues();
@@ -766,7 +766,8 @@ function _configPorParoquia(paroquiaId) {
 
 function _conteudoPastoralDiario() {
   const data = new Date();
-  const diaAno = Math.floor((data - new Date(data.getFullYear(), 0, 0)) / MS_POR_DIA);
+  const inicioAno = new Date(data.getFullYear(), 0, 1);
+  const diaAno = Math.floor((data - inicioAno) / MS_POR_DIA) + 1;
 
   const liturgias = [
     { referencia: 'Jo 13,34', titulo: 'Mandamento do Amor', mensagem: 'Amai-vos uns aos outros como eu vos amei.' },
