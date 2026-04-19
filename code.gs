@@ -47,6 +47,10 @@ const PROGRESSO_MANUTENCAO_PADRAO = {
   planejada: 35
 };
 const ACOES_PERMITIDAS_FIEL = ['getSessaoUsuario', 'getFielPainel', 'getTransparenciaPublica'];
+const ACOES_PUBLICAS = ['getTransparenciaPublica', 'getParoquiasFiel', 'getFielPainelPublico', 'loginFiel'];
+const CATEGORIA_DIZIMISTA = 'Dizimista';
+const CATEGORIA_NAO_DIZIMISTA = 'Não Dizimista';
+const MS_POR_DIA = 86400000;
 
 /* ── Acesso à planilha ativa ──────────────────────────────── */
 /**
@@ -101,6 +105,8 @@ function doGet(e) {
       case 'getPrestacaoContas':      resultado = getPrestacaoContas();     break;
       case 'getRecados':              resultado = getRecados();             break;
       case 'getFielPainel':           resultado = getFielPainel();          break;
+      case 'getParoquiasFiel':        resultado = getParoquiasFiel();       break;
+      case 'getFielPainelPublico':    resultado = getFielPainelPublico(e.parameter || {}); break;
       // Endpoint público (sem dados sensíveis) – cân. 1287 §2
       case 'getTransparenciaPublica': resultado = getTransparenciaPublica(); break;
       default:
@@ -163,6 +169,7 @@ function doPost(e) {
       // Prestação de Contas (cân. 1284 §2, 8° / 1287)
       case 'publicarBalancete': resultado = publicarBalancete(payload); break;
       case 'addRecado': resultado = addRecado(payload); break;
+      case 'loginFiel': resultado = loginFiel(payload); break;
       default:
         resultado = { erro: 'Ação desconhecida: ' + action };
     }
@@ -184,7 +191,7 @@ function resposta(dados) {
 }
 
 function _prepararContexto(metodo, action, payload) {
-  const acoesPublicas = ['getTransparenciaPublica'];
+  const acoesPublicas = ACOES_PUBLICAS;
   if (acoesPublicas.indexOf(action) !== -1) return;
 
   const contexto = _resolverContextoUsuario(payload);
@@ -618,6 +625,265 @@ function getFielPainel() {
       }))
     ].slice(0, 8),
     distribuicao_gastos: distribuicaoGastos
+  };
+}
+
+function _normalizarWhatsApp55(valor) {
+  const digits = String(valor || '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('55')) return digits;
+  return '55' + digits;
+}
+
+function _normalizarNomeFiel(valor) {
+  return String(valor || '').trim().toLowerCase();
+}
+
+function _normalizarTextoBasico(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+function _ehCategoriaDizimista(categoria) {
+  return String(categoria || '').toLowerCase() === String(CATEGORIA_DIZIMISTA).toLowerCase();
+}
+
+function _listarParoquiasFiel() {
+  _garantirCabecalho(SHEETS.MEMBROS,
+    ['id','nome','telefone','categoria','status','ultimoDizimo','valor','paroquia_id']);
+  const membros = _lerAbaSemFiltro(SHEETS.MEMBROS);
+  const ids = {};
+  membros.forEach(m => {
+    const id = String(m.paroquia_id || '').trim();
+    if (!id) return;
+    ids[id] = true;
+  });
+  return Object.keys(ids).map(id => ({ id: id, nome: id }));
+}
+
+function getParoquiasFiel() {
+  return {
+    ok: true,
+    paroquias: _listarParoquiasFiel()
+  };
+}
+
+function _autenticarFiel(payload) {
+  _garantirCabecalho(SHEETS.MEMBROS,
+    ['id','nome','telefone','categoria','status','ultimoDizimo','valor','paroquia_id']);
+  const nome = String(payload.login || payload.nome || '').trim();
+  const senha = _normalizarWhatsApp55(payload.senha || payload.whatsapp || payload.telefone || '');
+  const paroquia_id = String(payload.paroquia_id || '').trim();
+  if (!nome) return { ok: false, erro: 'Informe o nome para login.' };
+  if (!paroquia_id) return { ok: false, erro: 'Selecione a paróquia.' };
+  if (!senha || !senha.startsWith('55')) return { ok: false, erro: 'Informe um número de WhatsApp válido.' };
+
+  const membros = _lerAbaSemFiltro(SHEETS.MEMBROS);
+  const nomeNorm = _normalizarNomeFiel(nome);
+  const encontrado = membros.find(m =>
+    _normalizarNomeFiel(m.nome) === nomeNorm &&
+    _normalizarWhatsApp55(m.telefone) === senha &&
+    String(m.paroquia_id || '').trim() === paroquia_id
+  );
+  if (!encontrado) return { ok: false, erro: 'Login inválido para o fiel informado.' };
+  return { ok: true, membro: encontrado, senha: senha, paroquia_id: paroquia_id, nome: nome };
+}
+
+function loginFiel(payload) {
+  _garantirCabecalho(SHEETS.MEMBROS,
+    ['id','nome','telefone','categoria','status','ultimoDizimo','valor','paroquia_id']);
+
+  const nome = String(payload.login || payload.nome || '').trim();
+  const telefone = _normalizarWhatsApp55(payload.senha || payload.whatsapp || payload.telefone || '');
+  const paroquia_id = String(payload.paroquia_id || '').trim();
+  const dizimista = _normalizarTextoBasico(payload.dizimista || '');
+  if (!nome) return { ok: false, erro: 'Informe o nome para login.' };
+  if (!paroquia_id) return { ok: false, erro: 'Selecione a paróquia.' };
+  if (dizimista !== 'sim' && dizimista !== 'nao') return { ok: false, erro: 'Selecione se é dizimista.' };
+  if (!telefone || !telefone.startsWith('55')) return { ok: false, erro: 'Informe um número de WhatsApp válido.' };
+
+  const sh = SH(SHEETS.MEMBROS);
+  const rows = sh.getDataRange().getValues();
+  const headers = rows[0] || ['id','nome','telefone','categoria','status','ultimoDizimo','valor','paroquia_id'];
+  const nomeIdx = headers.indexOf('nome');
+  const telIdx = headers.indexOf('telefone');
+  const parIdx = headers.indexOf('paroquia_id');
+  const catIdx = headers.indexOf('categoria');
+  const idIdx = headers.indexOf('id');
+
+  let membro = null;
+  for (let i = 1; i < rows.length; i++) {
+    if (_normalizarNomeFiel(rows[i][nomeIdx]) === _normalizarNomeFiel(nome) &&
+        _normalizarWhatsApp55(rows[i][telIdx]) === telefone &&
+        String(rows[i][parIdx] || '').trim() === paroquia_id) {
+      membro = {
+        id: rows[i][idIdx],
+        nome: rows[i][nomeIdx],
+        telefone: _normalizarWhatsApp55(rows[i][telIdx]),
+        categoria: rows[i][catIdx] || CATEGORIA_NAO_DIZIMISTA
+      };
+      break;
+    }
+  }
+
+  if (!membro) {
+    const id = Date.now();
+    const categoria = dizimista === 'sim' ? CATEGORIA_DIZIMISTA : CATEGORIA_NAO_DIZIMISTA;
+    sh.appendRow([id, nome, telefone, categoria, 'ativo', '—', 0, paroquia_id]);
+    membro = { id: id, nome: nome, telefone: telefone, categoria: categoria };
+    registrarLog('ADD', 'Fiel Cadastro', `id=${id} paroquia=${paroquia_id} categoria=${categoria}`);
+  }
+
+  return {
+    ok: true,
+    login: nome,
+    senha: telefone,
+    paroquia_id: paroquia_id,
+    fiel: {
+      id: membro.id,
+      nome: membro.nome,
+      telefone: membro.telefone,
+      categoria: membro.categoria,
+      dizimista: _ehCategoriaDizimista(membro.categoria)
+    }
+  };
+}
+
+function _configPorParoquia(paroquiaId) {
+  const sh = SH(SHEETS.CONFIG);
+  const rows = sh.getDataRange().getValues();
+  const cfg = {};
+  if (rows.length === 0) return cfg;
+
+  const isV2 = String(rows[0][0]).toLowerCase() === 'paroquia_id' &&
+               String(rows[0][1]).toLowerCase() === 'chave';
+  if (!isV2) {
+    rows.forEach(([k, v]) => { if (k) cfg[k] = v; });
+    return cfg;
+  }
+
+  rows.slice(1).forEach(([paroquia_id, chave, valor]) => {
+    if (!chave) return;
+    if (String(paroquia_id || '').trim() === String(paroquiaId || '').trim()) cfg[chave] = valor;
+  });
+  return cfg;
+}
+
+function _conteudoPastoralDiario() {
+  const data = new Date();
+  const inicioAno = new Date(data.getFullYear(), 0, 1);
+  const diaAno = Math.floor((data.getTime() - inicioAno.getTime()) / MS_POR_DIA) + 1;
+
+  const liturgias = [
+    { referencia: 'Jo 13,34', titulo: 'Mandamento do Amor', mensagem: 'Amai-vos uns aos outros como eu vos amei.' },
+    { referencia: 'Mt 5,9', titulo: 'Bem-aventurados os pacificadores', mensagem: 'Promova reconciliação e paz em sua casa e comunidade.' },
+    { referencia: 'Lc 1,38', titulo: 'Eis aqui a serva do Senhor', mensagem: 'Disponha seu coração para servir com fé e generosidade.' },
+    { referencia: 'Sl 23', titulo: 'O Senhor é meu pastor', mensagem: 'Confie no cuidado de Deus para cada necessidade.' }
+  ];
+  const santos = [
+    { nome: 'São José', exemplo: 'Fidelidade e silêncio orante.' },
+    { nome: 'Nossa Senhora Aparecida', exemplo: 'Confiança e intercessão materna.' },
+    { nome: 'São Francisco de Assis', exemplo: 'Simplicidade e cuidado com os pobres.' },
+    { nome: 'Santa Teresinha', exemplo: 'Santidade nas pequenas atitudes diárias.' }
+  ];
+  const quizzes = [
+    { pergunta: 'Qual atitude melhor expressa a vida comunitária cristã?', opcoes: ['Partilhar', 'Isolar-se', 'Julgar'], resposta: 0 },
+    { pergunta: 'O dízimo está ligado principalmente a quê?', opcoes: ['Gratidão', 'Obrigação financeira', 'Prestígio'], resposta: 0 },
+    { pergunta: 'Qual valor fortalece a pastoral?', opcoes: ['Competição', 'Serviço', 'Indiferença'], resposta: 1 }
+  ];
+
+  return {
+    liturgia_diaria: liturgias[diaAno % liturgias.length],
+    santo_do_dia: santos[diaAno % santos.length],
+    quiz: quizzes[diaAno % quizzes.length]
+  };
+}
+
+function getFielPainelPublico(params) {
+  const auth = _autenticarFiel(params || {});
+  if (!auth.ok) return auth;
+
+  const paroquiaId = auth.paroquia_id;
+  const config = _configPorParoquia(paroquiaId);
+  const metas = _lerAbaSemFiltro(SHEETS.METAS).filter(m => String(m.paroquia_id || '').trim() === paroquiaId);
+  const manutencoesBase = getManutencaoPatrimonial();
+  const manutencoes = Array.isArray(manutencoesBase)
+    ? manutencoesBase.filter(m => String(m.paroquia_id || '').trim() === paroquiaId)
+    : [];
+  const recados = _lerAbaSemFiltro(SHEETS.RECADOS).filter(r => {
+    const destino = _normalizarIdParoquia(r.paroquia_destino);
+    const origem = _normalizarIdParoquia(r.paroquia_origem);
+    const atual = _normalizarIdParoquia(paroquiaId);
+    return (r.tipo === 'novidade' || r.tipo === 'comunicado') && (destino === 'geral' || destino === atual || origem === atual);
+  });
+  const lancamentosMes = _lerAbaSemFiltro(SHEETS.LANCAMENTOS).filter(l => {
+    if (String(l.paroquia_id || '').trim() !== paroquiaId) return false;
+    if (String(l.tipo || '').toLowerCase() !== 'despesa') return false;
+    const d = new Date(l.data);
+    const hoje = new Date();
+    return d.getMonth() === hoje.getMonth() && d.getFullYear() === hoje.getFullYear();
+  });
+
+  const totalDespesas = lancamentosMes.reduce((s, l) => s + Number(l.valor || 0), 0);
+  const porCategoria = {};
+  lancamentosMes.forEach(l => {
+    const c = l.categoria || 'Outros';
+    porCategoria[c] = (porCategoria[c] || 0) + Number(l.valor || 0);
+  });
+  const distribuicaoGastos = Object.keys(porCategoria).map(categoria => ({
+    categoria: categoria,
+    percentual: totalDespesas > 0 ? Number(((porCategoria[categoria] / totalDespesas) * 100).toFixed(1)) : 0
+  }));
+
+  const metasReforma = metas.map(m => {
+    const meta = Number(m.meta || 0);
+    const arrecadado = Number(m.arrecadado || 0);
+    const percentual = meta > 0 ? Math.min(100, Math.round((arrecadado / meta) * 100)) : 0;
+    return {
+      id: m.id,
+      titulo: m.titulo || 'Projeto',
+      descricao: m.descricao || '',
+      percentual_conclusao: percentual,
+      status: percentual >= 100 ? 'Concluído' : 'Em andamento'
+    };
+  });
+
+  return {
+    ok: true,
+    usuario: {
+      nome: auth.membro.nome,
+      perfil: 'fiel',
+      categoria: auth.membro.categoria
+    },
+    paroquia: {
+      id: paroquiaId,
+      nome: config.nome || paroquiaId,
+      pix_tipo: config.pixTipo || '',
+      pix_chave: config.pixChave || '',
+      qr_code_pix: config.pixQrUrl || ''
+    },
+    novidades: recados.slice(0, MAX_NOVIDADES_PAINEL_FIEL).map(r => ({
+      id: r.id,
+      data: r.data,
+      titulo: r.titulo || 'Comunicado',
+      mensagem: r.mensagem || '',
+      tipo: r.tipo
+    })),
+    status_reformas: [
+      ...metasReforma,
+      ...manutencoes.slice(0, 4).map(m => ({
+        id: `mant-${m.id}`,
+        titulo: m.bem,
+        descricao: m.descricao || '',
+        percentual_conclusao: PROGRESSO_MANUTENCAO_PADRAO[String(m.status || '').toLowerCase()] || 50,
+        status: String(m.status || '').toLowerCase() === 'concluida' ? 'Concluído' : 'Em andamento'
+      }))
+    ].slice(0, 8),
+    distribuicao_gastos: distribuicaoGastos,
+    ..._conteudoPastoralDiario()
   };
 }
 

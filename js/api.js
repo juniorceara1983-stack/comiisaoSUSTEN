@@ -117,6 +117,9 @@ const API = (() => {
   const getFielPainel = () => _fetch('getFielPainel');
   const getRecados = () => _fetch('getRecados');
   const addRecado = (data) => _post('addRecado', data);
+  const getParoquiasFiel = () => _fetch('getParoquiasFiel');
+  const loginFiel = (data) => _post('loginFiel', data);
+  const getFielPainelPublico = (payload) => _fetch('getFielPainelPublico', payload);
 
   return {
     getFinanceiro, getLancamentos, addLancamento, deleteLancamento,
@@ -132,7 +135,8 @@ const API = (() => {
     getManutencaoPatrimonial, addManutencaoPatrimonial, updateManutencaoPatrimonial, deleteManutencaoPatrimonial,
     getInventario, addInventario, updateInventario, deleteInventario,
     getPrestacaoContas, publicarBalancete, getTransparenciaPublica,
-    getFielPainel, getRecados, addRecado
+    getFielPainel, getRecados, addRecado,
+    getParoquiasFiel, loginFiel, getFielPainelPublico
   };
 })();
 
