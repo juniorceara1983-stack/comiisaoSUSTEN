@@ -17,6 +17,8 @@ const SHEETS = {
   VOLUNTARIOS: 'Voluntários',
   MEMBROS:     'Membros',
   DIZIMOS:     'Dízimos',
+  USUARIOS:    'Usuários',
+  RECADOS:     'Recados',
   CONFIG:      'Configurações',
   LOG:         'Log',
   // Novas abas pastorais (Doc. 106 CNBB / cân. 537, 1283, 1284, 1287)
@@ -38,6 +40,14 @@ const CATEGORIAS_PARTILHA_AD_EXTRA = [
   'Santa Infância'
 ];
 
+const MAX_NOVIDADES_PAINEL_FIEL = 6;
+const PROGRESSO_MANUTENCAO_PADRAO = {
+  concluida: 100,
+  'em-andamento': 65,
+  planejada: 35
+};
+const ACOES_PERMITIDAS_FIEL = ['getSessaoUsuario', 'getFielPainel', 'getTransparenciaPublica'];
+
 /* ── Acesso à planilha ativa ──────────────────────────────── */
 /**
  * ID da planilha Google Sheets utilizada pelo SUSTEN.
@@ -56,6 +66,7 @@ const SS  = () => {
   return SpreadsheetApp.openById(SPREADSHEET_ID);
 };
 const SH  = (nome) => SS().getSheetByName(nome) || SS().insertSheet(nome);
+let CONTEXTO_USUARIO_ATUAL = null;
 
 /* ══════════════════════════════════════════════════════════
    ENTRY POINTS (Web App)
@@ -69,7 +80,9 @@ function doGet(e) {
   let resultado;
 
   try {
+    _prepararContexto('GET', action, e.parameter || {});
     switch (action) {
+      case 'getSessaoUsuario': resultado = getSessaoUsuario(); break;
       case 'getFinanceiro':   resultado = getFinanceiro();   break;
       case 'getLancamentos':  resultado = getLancamentos();  break;
       case 'getMetas':        resultado = getMetas();        break;
@@ -86,6 +99,8 @@ function doGet(e) {
       case 'getManutencaoPatrimonial':resultado = getManutencaoPatrimonial(); break;
       case 'getInventario':           resultado = getInventario();          break;
       case 'getPrestacaoContas':      resultado = getPrestacaoContas();     break;
+      case 'getRecados':              resultado = getRecados();             break;
+      case 'getFielPainel':           resultado = getFielPainel();          break;
       // Endpoint público (sem dados sensíveis) – cân. 1287 §2
       case 'getTransparenciaPublica': resultado = getTransparenciaPublica(); break;
       default:
@@ -94,6 +109,8 @@ function doGet(e) {
   } catch (err) {
     resultado = { erro: err.message };
     registrarLog('ERRO GET', action, err.message);
+  } finally {
+    _limparContexto();
   }
 
   return resposta(resultado);
@@ -108,6 +125,7 @@ function doPost(e) {
   let resultado;
 
   try {
+    _prepararContexto('POST', action, payload || {});
     switch (action) {
       case 'addLancamento':     resultado = addLancamento(payload);    break;
       case 'deleteLancamento':  resultado = deleteLancamento(payload.id); break;
@@ -144,12 +162,15 @@ function doPost(e) {
       case 'deleteInventario': resultado = deleteInventario(payload.id); break;
       // Prestação de Contas (cân. 1284 §2, 8° / 1287)
       case 'publicarBalancete': resultado = publicarBalancete(payload); break;
+      case 'addRecado': resultado = addRecado(payload); break;
       default:
         resultado = { erro: 'Ação desconhecida: ' + action };
     }
   } catch (err) {
     resultado = { erro: err.message };
     registrarLog('ERRO POST', action, err.message);
+  } finally {
+    _limparContexto();
   }
 
   return resposta(resultado);
@@ -160,6 +181,94 @@ function resposta(dados) {
   return ContentService
     .createTextOutput(JSON.stringify(dados))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function _prepararContexto(metodo, action, payload) {
+  const acoesPublicas = ['getTransparenciaPublica'];
+  if (acoesPublicas.indexOf(action) !== -1) return;
+
+  const contexto = _resolverContextoUsuario(payload);
+  if (!contexto.ok) throw new Error(contexto.erro || 'Usuário não autenticado.');
+  if (!_temPermissaoParaAcao(contexto.perfil, action, metodo)) {
+    throw new Error('Acesso negado para o perfil informado.');
+  }
+  CONTEXTO_USUARIO_ATUAL = contexto;
+}
+
+function _limparContexto() {
+  CONTEXTO_USUARIO_ATUAL = null;
+}
+
+function _ctx() {
+  return CONTEXTO_USUARIO_ATUAL;
+}
+
+function _emailLogado() {
+  try {
+    const active = Session.getActiveUser().getEmail();
+    if (active) return String(active).trim().toLowerCase();
+  } catch (_) {}
+  try {
+    const effective = Session.getEffectiveUser().getEmail();
+    if (effective) return String(effective).trim().toLowerCase();
+  } catch (_) {}
+  return '';
+}
+
+function _resolverContextoUsuario(payload) {
+  const headersUsuarios = ['id','email','nome','paroquia_id','perfil','ativo'];
+  _garantirCabecalho(SHEETS.USUARIOS, headersUsuarios);
+  const email = _emailLogado();
+  if (!email) return { ok: false, erro: 'Não foi possível identificar o e-mail do usuário.' };
+
+  const usuarios = _lerAbaSemFiltro(SHEETS.USUARIOS);
+  const usuario = usuarios.find(u => String(u.email || '').trim().toLowerCase() === email);
+  if (!usuario) return { ok: false, erro: `Usuário não autorizado: ${email}` };
+  if (String(usuario.ativo || 'true').toLowerCase() === 'false') {
+    return { ok: false, erro: 'Usuário inativo.' };
+  }
+  return {
+    ok: true,
+    email: email,
+    nome: usuario.nome || '',
+    paroquia_id: String(usuario.paroquia_id || '').trim(),
+    perfil: String(usuario.perfil || 'fiel').toLowerCase()
+  };
+}
+
+function _temPermissaoParaAcao(perfil, action, metodo) {
+  const perfilNorm = String(perfil || 'fiel').toLowerCase();
+  if (perfilNorm === 'admin' || perfilNorm === 'coordenador' || perfilNorm === 'padre') return true;
+
+  if (metodo === 'POST') return false;
+  return ACOES_PERMITIDAS_FIEL.indexOf(action) !== -1;
+}
+
+function _deveFiltrarPorParoquia(nomeAba) {
+  const semFiltro = [SHEETS.USUARIOS, SHEETS.LOG];
+  return semFiltro.indexOf(nomeAba) === -1;
+}
+
+function _normalizarIdParoquia(valor) {
+  return String(valor || '').trim().toLowerCase();
+}
+
+function _linhaDaParoquiaPermitida(row) {
+  const ctx = _ctx();
+  if (!ctx || !_normalizarIdParoquia(ctx.paroquia_id)) return true;
+  return _normalizarIdParoquia(row.paroquia_id) === _normalizarIdParoquia(ctx.paroquia_id);
+}
+
+function _enriquecerComParoquia(data) {
+  const ctx = _ctx();
+  const clone = Object.assign({}, data || {});
+  if (ctx && _normalizarIdParoquia(ctx.paroquia_id)) clone.paroquia_id = ctx.paroquia_id;
+  return clone;
+}
+
+function _mascararMoeda(valor) {
+  if (valor === null || valor === undefined || valor === '') return '—';
+  return 'R$ •••••';
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -235,28 +344,32 @@ function getFinanceiro() {
    ══════════════════════════════════════════════════════════ */
 
 function getLancamentos() {
+  _garantirCabecalho(SHEETS.LANCAMENTOS,
+    ['id','data','descricao','tipo','valor','categoria','responsavel','paroquia_id']);
   const sh  = SH(SHEETS.LANCAMENTOS);
   const rows = sh.getDataRange().getValues();
   if (rows.length <= 1) return [];
 
   const headers = rows[0];
-  return rows.slice(1).map((row, i) => {
+  const all = rows.slice(1).map((row, i) => {
     const obj = {};
     headers.forEach((h, j) => { obj[h] = row[j]; });
     obj.id  = obj.id  || i + 1;
     obj.data = obj.data instanceof Date ? Utilities.formatDate(obj.data, Session.getScriptTimeZone(), 'yyyy-MM-dd') : obj.data;
     return obj;
-  }).filter(r => r.descricao).reverse();
+  }).filter(r => r.descricao).filter(_linhaDaParoquiaPermitida).reverse();
+  return all;
 }
 
 function addLancamento(data) {
   _garantirCabecalho(SHEETS.LANCAMENTOS,
-    ['id','data','descricao','tipo','valor','categoria','responsavel']);
+    ['id','data','descricao','tipo','valor','categoria','responsavel','paroquia_id']);
 
   const sh  = SH(SHEETS.LANCAMENTOS);
   const id  = Date.now();
+  const linha = _enriquecerComParoquia(data);
   sh.appendRow([id, data.data, data.descricao, data.tipo,
-                Number(data.valor), data.categoria, data.responsavel || '']);
+                Number(data.valor), data.categoria, data.responsavel || '', linha.paroquia_id || '']);
   registrarLog('ADD', 'Lançamento', JSON.stringify(data));
   return { ok: true, id };
 }
@@ -275,17 +388,18 @@ function getMetas() {
 
 function addMeta(data) {
   _garantirCabecalho(SHEETS.METAS,
-    ['id','emoji','titulo','descricao','meta','arrecadado','status','prazo']);
+    ['id','emoji','titulo','descricao','meta','arrecadado','status','prazo','paroquia_id']);
   const sh = SH(SHEETS.METAS);
   const id = Date.now();
+  const linha = _enriquecerComParoquia(data);
   sh.appendRow([id, data.emoji, data.titulo, data.descricao,
                 Number(data.meta), Number(data.arrecadado || 0),
-                data.status, data.prazo]);
+                data.status, data.prazo, linha.paroquia_id || '']);
   return { ok: true, id };
 }
 
 function updateMeta(data) {
-  return _atualizarPorId(SHEETS.METAS, data);
+  return _atualizarPorId(SHEETS.METAS, _enriquecerComParoquia(data));
 }
 
 function deleteMeta(id) {
@@ -303,17 +417,18 @@ function getVoluntarios() {
 
 function addVoluntario(data) {
   _garantirCabecalho(SHEETS.VOLUNTARIOS,
-    ['id','nome','profissao','tags','telefone','disponibilidade']);
+    ['id','nome','profissao','tags','telefone','disponibilidade','paroquia_id']);
   const sh = SH(SHEETS.VOLUNTARIOS);
   const id = Date.now();
+  const linha = _enriquecerComParoquia(data);
   sh.appendRow([id, data.nome, data.profissao,
                 Array.isArray(data.tags) ? data.tags.join(',') : data.tags,
-                data.telefone, data.disponibilidade]);
+                data.telefone, data.disponibilidade, linha.paroquia_id || '']);
   return { ok: true, id };
 }
 
 function updateVoluntario(data) {
-  return _atualizarPorId(SHEETS.VOLUNTARIOS, data);
+  return _atualizarPorId(SHEETS.VOLUNTARIOS, _enriquecerComParoquia(data));
 }
 
 function deleteVoluntario(id) {
@@ -330,16 +445,17 @@ function getMembros() {
 
 function addMembro(data) {
   _garantirCabecalho(SHEETS.MEMBROS,
-    ['id','nome','telefone','categoria','status','ultimoDizimo','valor']);
+    ['id','nome','telefone','categoria','status','ultimoDizimo','valor','paroquia_id']);
   const sh = SH(SHEETS.MEMBROS);
   const id = Date.now();
+  const linha = _enriquecerComParoquia(data);
   sh.appendRow([id, data.nome, data.telefone, data.categoria,
-                data.status || 'ativo', '—', 0]);
+                data.status || 'ativo', '—', 0, linha.paroquia_id || '']);
   return { ok: true, id };
 }
 
 function updateMembro(data) {
-  return _atualizarPorId(SHEETS.MEMBROS, data);
+  return _atualizarPorId(SHEETS.MEMBROS, _enriquecerComParoquia(data));
 }
 
 function deleteMembro(id) {
@@ -348,10 +464,11 @@ function deleteMembro(id) {
 
 function registrarDizimo(payload) {
   const { nome, valor, data, intencao } = payload.data || payload;
+  const ctx = _ctx();
   _garantirCabecalho(SHEETS.DIZIMOS,
-    ['id','data','nome','valor','intencao','observacao']);
+    ['id','data','nome','valor','intencao','observacao','paroquia_id']);
   const sh = SH(SHEETS.DIZIMOS);
-  sh.appendRow([Date.now(), data, nome, Number(valor), intencao || '', payload.obs || '']);
+  sh.appendRow([Date.now(), data, nome, Number(valor), intencao || '', payload.obs || '', ctx ? ctx.paroquia_id || '' : '']);
 
   // Atualizar linha do membro correspondente
   const membros_sh = SH(SHEETS.MEMBROS);
@@ -381,17 +498,162 @@ function getConfig() {
   const sh = SH(SHEETS.CONFIG);
   const rows = sh.getDataRange().getValues();
   const config = {};
+  if (rows.length === 0) return config;
+
+  const hasHeaderV2 = String(rows[0][0]).toLowerCase() === 'paroquia_id' &&
+                      String(rows[0][1]).toLowerCase() === 'chave';
+  if (hasHeaderV2) {
+    const ctx = _ctx();
+    const paroquia = _normalizarIdParoquia(ctx ? ctx.paroquia_id : '');
+    rows.slice(1).forEach(([paroquia_id, chave, valor]) => {
+      if (!chave) return;
+      if (!paroquia || _normalizarIdParoquia(paroquia_id) === paroquia) config[chave] = valor;
+    });
+    return config;
+  }
+
   rows.forEach(([chave, valor]) => { if (chave) config[chave] = valor; });
   return config;
 }
 
 function saveConfig(data) {
   const sh = SH(SHEETS.CONFIG);
-  sh.clearContents();
+  const ctx = _ctx();
+  const paroquia = ctx ? ctx.paroquia_id || '' : '';
+  const rows = sh.getDataRange().getValues();
+  const hasHeaderV2 = rows.length > 0 &&
+    String(rows[0][0]).toLowerCase() === 'paroquia_id' &&
+    String(rows[0][1]).toLowerCase() === 'chave';
+
+  if (!hasHeaderV2) {
+    sh.clearContents();
+    sh.appendRow(['paroquia_id', 'chave', 'valor']);
+  }
+
+  const allRows = sh.getDataRange().getValues();
+  for (let i = allRows.length; i >= 2; i--) {
+    if (_normalizarIdParoquia(allRows[i - 1][0]) === _normalizarIdParoquia(paroquia)) {
+      sh.deleteRow(i);
+    }
+  }
+
   Object.entries(data).forEach(([k, v]) => {
-    if (k !== 'action') sh.appendRow([k, v]);
+    if (k !== 'action') sh.appendRow([paroquia, k, v]);
   });
   return { ok: true };
+}
+
+function getSessaoUsuario() {
+  const ctx = _ctx();
+  if (!ctx) return { ok: false, erro: 'Sessão não inicializada.' };
+  return {
+    ok: true,
+    usuario: {
+      email: ctx.email,
+      nome: ctx.nome,
+      perfil: ctx.perfil
+    }
+  };
+}
+
+function getFielPainel() {
+  const ctx = _ctx();
+  if (!ctx) throw new Error('Sessão inválida.');
+
+  const config = getConfig();
+  const metas = getMetas();
+  const manutencoes = getManutencaoPatrimonial();
+  const financeiro = getFinanceiro();
+  const recados = getRecados().filter(r => r.tipo === 'novidade' || r.tipo === 'comunicado');
+
+  const metasReforma = metas.map(m => {
+    const meta = Number(m.meta || 0);
+    const arrecadado = Number(m.arrecadado || 0);
+    const percentual = meta > 0 ? Math.min(100, Math.round((arrecadado / meta) * 100)) : 0;
+    const statusMap = { ativa: 'Em andamento', urgente: 'Em andamento', concluida: 'Concluído' };
+    return {
+      id: m.id,
+      titulo: m.titulo,
+      descricao: m.descricao || '',
+      percentual_conclusao: percentual,
+      status: statusMap[String(m.status || '').toLowerCase()] || 'Status não definido',
+      valor_mascarado: _mascararMoeda(meta)
+    };
+  });
+
+  const totalDespesas = financeiro.distribuicao.reduce((s, d) => s + Number(d.valor || 0), 0);
+  const distribuicaoGastos = financeiro.distribuicao.map(d => ({
+    categoria: d.categoria,
+    percentual: totalDespesas > 0 ? Number(((Number(d.valor || 0) / totalDespesas) * 100).toFixed(1)) : 0
+  }));
+
+  return {
+    ok: true,
+    usuario: {
+      nome: ctx.nome,
+      perfil: ctx.perfil
+    },
+    paroquia: {
+      nome: config.nome || '',
+      pix_tipo: config.pixTipo || '',
+      pix_chave: config.pixChave || '',
+      qr_code_pix: config.pixQrUrl || ''
+    },
+    novidades: recados.slice(0, MAX_NOVIDADES_PAINEL_FIEL).map(r => ({
+      id: r.id,
+      data: r.data,
+      titulo: r.titulo,
+      mensagem: r.mensagem,
+      tipo: r.tipo
+    })),
+    status_reformas: [
+      ...metasReforma,
+      ...manutencoes.slice(0, 4).map(m => ({
+        id: `mant-${m.id}`,
+        titulo: m.bem,
+        descricao: m.descricao || '',
+        percentual_conclusao: PROGRESSO_MANUTENCAO_PADRAO[String(m.status || '').toLowerCase()] || 50,
+        status: String(m.status || '').toLowerCase() === 'concluida' ? 'Concluído' : 'Em andamento',
+        valor_mascarado: _mascararMoeda(m.custo_estimado)
+      }))
+    ].slice(0, 8),
+    distribuicao_gastos: distribuicaoGastos
+  };
+}
+
+const _CABECALHO_RECADOS = ['id','data','autor_email','autor_nome','paroquia_origem','paroquia_destino','tipo','titulo','mensagem','status'];
+
+function getRecados() {
+  _garantirCabecalho(SHEETS.RECADOS, _CABECALHO_RECADOS);
+  const ctx = _ctx();
+  const rows = _lerAbaSemFiltro(SHEETS.RECADOS);
+  if (!ctx || !ctx.paroquia_id) return rows;
+  const minhaParoquia = _normalizarIdParoquia(ctx.paroquia_id);
+  return rows.filter(r => {
+    const destino = _normalizarIdParoquia(r.paroquia_destino);
+    return destino === 'geral' || destino === minhaParoquia || _normalizarIdParoquia(r.paroquia_origem) === minhaParoquia;
+  });
+}
+
+function addRecado(data) {
+  _garantirCabecalho(SHEETS.RECADOS, _CABECALHO_RECADOS);
+  const ctx = _ctx();
+  if (!ctx) throw new Error('Sessão inválida para publicar recado.');
+  const sh = SH(SHEETS.RECADOS);
+  const id = Date.now();
+  sh.appendRow([
+    id,
+    new Date().toISOString(),
+    ctx.email,
+    ctx.nome || '',
+    ctx.paroquia_id || '',
+    String(data.paroquia_destino || 'geral').trim(),
+    String(data.tipo || 'comunicado').trim().toLowerCase(),
+    data.titulo || '',
+    data.mensagem || '',
+    'nao_lido'
+  ]);
+  return { ok: true, id };
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -422,6 +684,12 @@ function getRelatorio(params) {
    ══════════════════════════════════════════════════════════ */
 
 function _lerAba(nomeAba) {
+  const rows = _lerAbaSemFiltro(nomeAba);
+  if (!_deveFiltrarPorParoquia(nomeAba)) return rows;
+  return rows.filter(_linhaDaParoquiaPermitida);
+}
+
+function _lerAbaSemFiltro(nomeAba) {
   const sh   = SH(nomeAba);
   const rows = sh.getDataRange().getValues();
   if (rows.length <= 1) return [];
@@ -451,11 +719,18 @@ function _garantirCabecalho(nomeAba, cabecalho) {
 function _deletarPorId(nomeAba, id) {
   const sh   = SH(nomeAba);
   const rows = sh.getDataRange().getValues();
+  if (rows.length <= 1) return { ok: false, erro: 'Registro não encontrado' };
   const headers = rows[0];
   const idIdx   = headers.indexOf('id');
+  const paroquiaIdx = headers.indexOf('paroquia_id');
+  const ctx = _ctx();
 
   for (let i = rows.length - 1; i >= 1; i--) {
     if (String(rows[i][idIdx]) === String(id)) {
+      if (paroquiaIdx !== -1 && ctx && _normalizarIdParoquia(ctx.paroquia_id) &&
+          _normalizarIdParoquia(rows[i][paroquiaIdx]) !== _normalizarIdParoquia(ctx.paroquia_id)) {
+        return { ok: false, erro: 'Acesso negado para excluir registro de outra paróquia.' };
+      }
       sh.deleteRow(i + 1);
       return { ok: true };
     }
@@ -466,12 +741,22 @@ function _deletarPorId(nomeAba, id) {
 function _atualizarPorId(nomeAba, data) {
   const sh   = SH(nomeAba);
   const rows = sh.getDataRange().getValues();
+  if (rows.length <= 1) return { ok: false, erro: 'Registro não encontrado' };
   const headers = rows[0];
   const idIdx   = headers.indexOf('id');
+  const paroquiaIdx = headers.indexOf('paroquia_id');
+  const ctx = _ctx();
 
   for (let i = 1; i < rows.length; i++) {
     if (String(rows[i][idIdx]) === String(data.id)) {
+      if (paroquiaIdx !== -1 && ctx && _normalizarIdParoquia(ctx.paroquia_id) &&
+          _normalizarIdParoquia(rows[i][paroquiaIdx]) !== _normalizarIdParoquia(ctx.paroquia_id)) {
+        return { ok: false, erro: 'Acesso negado para atualizar registro de outra paróquia.' };
+      }
       const novaLinha = headers.map(h => data[h] !== undefined ? data[h] : rows[i][headers.indexOf(h)]);
+      if (paroquiaIdx !== -1 && ctx && _normalizarIdParoquia(ctx.paroquia_id)) {
+        novaLinha[paroquiaIdx] = ctx.paroquia_id;
+      }
       sh.getRange(i + 1, 1, 1, headers.length).setValues([novaLinha]);
       return { ok: true };
     }
@@ -555,7 +840,7 @@ function verificarDizimistasInativos() {
 
 const _CABECALHO_CARITATIVO = ['id','data','tipo','origem_destino','categoria',
   'familias_atendidas','quilos_alimentos','valor','responsavel_pastoral_social',
-  'observacao_confidencial'];
+  'observacao_confidencial','paroquia_id'];
 
 function getFundoCaritativo() {
   _garantirCabecalho(SHEETS.FUNDO_CARITATIVO, _CABECALHO_CARITATIVO);
@@ -571,19 +856,21 @@ function addFundoCaritativo(data) {
   _garantirCabecalho(SHEETS.FUNDO_CARITATIVO, _CABECALHO_CARITATIVO);
   const sh = SH(SHEETS.FUNDO_CARITATIVO);
   const id = Date.now();
+  const linha = _enriquecerComParoquia(data);
   sh.appendRow([id, data.data, data.tipo, data.origem_destino || '',
                 data.categoria || 'Outros',
                 Number(data.familias_atendidas || 0),
                 Number(data.quilos_alimentos || 0),
                 Number(data.valor || 0),
                 data.responsavel_pastoral_social || '',
-                data.observacao_confidencial || '']);
+                data.observacao_confidencial || '',
+                linha.paroquia_id || '']);
   registrarLog('ADD', 'Fundo Caritativo', `id=${id} cat=${data.categoria}`);
   return { ok: true, id };
 }
 
 function updateFundoCaritativo(data) {
-  return _atualizarPorId(SHEETS.FUNDO_CARITATIVO, data);
+  return _atualizarPorId(SHEETS.FUNDO_CARITATIVO, _enriquecerComParoquia(data));
 }
 
 function deleteFundoCaritativo(id) {
@@ -643,7 +930,7 @@ function getImpactoCaridade() {
    ══════════════════════════════════════════════════════════ */
 
 const _CABECALHO_EVANG = ['id','titulo','descricao','indicador','meta_numerica',
-  'realizado','periodo','responsavel_pastoral'];
+  'realizado','periodo','responsavel_pastoral','paroquia_id'];
 
 function getMetasEvangelizacao() {
   _garantirCabecalho(SHEETS.METAS_EVANGELIZACAO, _CABECALHO_EVANG);
@@ -654,14 +941,15 @@ function addMetaEvangelizacao(data) {
   _garantirCabecalho(SHEETS.METAS_EVANGELIZACAO, _CABECALHO_EVANG);
   const sh = SH(SHEETS.METAS_EVANGELIZACAO);
   const id = Date.now();
+  const linha = _enriquecerComParoquia(data);
   sh.appendRow([id, data.titulo, data.descricao || '', data.indicador,
                 Number(data.meta_numerica || 0), Number(data.realizado || 0),
-                data.periodo || '', data.responsavel_pastoral || '']);
+                data.periodo || '', data.responsavel_pastoral || '', linha.paroquia_id || '']);
   return { ok: true, id };
 }
 
 function updateMetaEvangelizacao(data) {
-  return _atualizarPorId(SHEETS.METAS_EVANGELIZACAO, data);
+  return _atualizarPorId(SHEETS.METAS_EVANGELIZACAO, _enriquecerComParoquia(data));
 }
 
 function deleteMetaEvangelizacao(id) {
@@ -701,7 +989,7 @@ function getTermometroMissionario() {
    ══════════════════════════════════════════════════════════ */
 
 const _CABECALHO_CONSELHO = ['id','data','tipo','pauta','participantes',
-  'deliberacoes','anexo_url','assinatura_hash'];
+  'deliberacoes','anexo_url','assinatura_hash','paroquia_id'];
 
 function getConselhoEconomico() {
   _garantirCabecalho(SHEETS.CONSELHO_ECONOMICO, _CABECALHO_CONSELHO);
@@ -712,6 +1000,7 @@ function addConselhoEconomico(data) {
   _garantirCabecalho(SHEETS.CONSELHO_ECONOMICO, _CABECALHO_CONSELHO);
   const sh = SH(SHEETS.CONSELHO_ECONOMICO);
   const id = Date.now();
+  const linha = _enriquecerComParoquia(data);
   // Assinatura digital interna (auditável): hash SHA-256 do conteúdo da ata
   // + timestamp + e-mail do usuário que registrou. O e-mail é parte
   // intencional do hash para fins de rastreio canônico (cân. 1284 §2, 7°);
@@ -721,13 +1010,13 @@ function addConselhoEconomico(data) {
   const hash = _sha256(conteudo);
   sh.appendRow([id, data.data, data.tipo || 'Reunião',
                 data.pauta || '', data.participantes || '',
-                data.deliberacoes || '', data.anexo_url || '', hash]);
+                data.deliberacoes || '', data.anexo_url || '', hash, linha.paroquia_id || '']);
   registrarLog('ADD', 'Conselho Econômico', `id=${id} hash=${hash.substring(0,12)}`);
   return { ok: true, id, assinatura_hash: hash };
 }
 
 function updateConselhoEconomico(data) {
-  return _atualizarPorId(SHEETS.CONSELHO_ECONOMICO, data);
+  return _atualizarPorId(SHEETS.CONSELHO_ECONOMICO, _enriquecerComParoquia(data));
 }
 
 function deleteConselhoEconomico(id) {
@@ -739,7 +1028,7 @@ function deleteConselhoEconomico(id) {
    ══════════════════════════════════════════════════════════ */
 
 const _CABECALHO_MANUTENCAO = ['id','bem','descricao','ultima_revisao',
-  'proxima_revisao','custo_estimado','status'];
+  'proxima_revisao','custo_estimado','status','paroquia_id'];
 
 function getManutencaoPatrimonial() {
   _garantirCabecalho(SHEETS.MANUTENCAO_PATRIMONIAL, _CABECALHO_MANUTENCAO);
@@ -762,14 +1051,15 @@ function addManutencaoPatrimonial(data) {
   _garantirCabecalho(SHEETS.MANUTENCAO_PATRIMONIAL, _CABECALHO_MANUTENCAO);
   const sh = SH(SHEETS.MANUTENCAO_PATRIMONIAL);
   const id = Date.now();
+  const linha = _enriquecerComParoquia(data);
   sh.appendRow([id, data.bem, data.descricao || '',
                 data.ultima_revisao || '', data.proxima_revisao || '',
-                Number(data.custo_estimado || 0), data.status || 'planejada']);
+                Number(data.custo_estimado || 0), data.status || 'planejada', linha.paroquia_id || '']);
   return { ok: true, id };
 }
 
 function updateManutencaoPatrimonial(data) {
-  return _atualizarPorId(SHEETS.MANUTENCAO_PATRIMONIAL, data);
+  return _atualizarPorId(SHEETS.MANUTENCAO_PATRIMONIAL, _enriquecerComParoquia(data));
 }
 
 function deleteManutencaoPatrimonial(id) {
@@ -781,7 +1071,7 @@ function deleteManutencaoPatrimonial(id) {
    ══════════════════════════════════════════════════════════ */
 
 const _CABECALHO_INVENTARIO = ['id','tipo','descricao','data_aquisicao',
-  'valor','estado_conservacao','localizacao'];
+  'valor','estado_conservacao','localizacao','paroquia_id'];
 
 function getInventario() {
   _garantirCabecalho(SHEETS.INVENTARIO, _CABECALHO_INVENTARIO);
@@ -792,14 +1082,15 @@ function addInventario(data) {
   _garantirCabecalho(SHEETS.INVENTARIO, _CABECALHO_INVENTARIO);
   const sh = SH(SHEETS.INVENTARIO);
   const id = Date.now();
+  const linha = _enriquecerComParoquia(data);
   sh.appendRow([id, data.tipo || 'Móvel', data.descricao || '',
                 data.data_aquisicao || '', Number(data.valor || 0),
-                data.estado_conservacao || 'Bom', data.localizacao || '']);
+                data.estado_conservacao || 'Bom', data.localizacao || '', linha.paroquia_id || '']);
   return { ok: true, id };
 }
 
 function updateInventario(data) {
-  return _atualizarPorId(SHEETS.INVENTARIO, data);
+  return _atualizarPorId(SHEETS.INVENTARIO, _enriquecerComParoquia(data));
 }
 
 function deleteInventario(id) {
@@ -810,7 +1101,7 @@ function deleteInventario(id) {
    PRESTAÇÃO DE CONTAS PÚBLICA – Cân. 1287 §2
    ══════════════════════════════════════════════════════════ */
 
-const _CABECALHO_PRESTACAO = ['id','periodo','receita','despesa','saldo','publicado','data_publicacao'];
+const _CABECALHO_PRESTACAO = ['id','periodo','receita','despesa','saldo','publicado','data_publicacao','paroquia_id'];
 
 function getPrestacaoContas() {
   _garantirCabecalho(SHEETS.PRESTACAO_CONTAS, _CABECALHO_PRESTACAO);
@@ -821,10 +1112,11 @@ function publicarBalancete(data) {
   _garantirCabecalho(SHEETS.PRESTACAO_CONTAS, _CABECALHO_PRESTACAO);
   const sh = SH(SHEETS.PRESTACAO_CONTAS);
   const id = Date.now();
+  const linha = _enriquecerComParoquia(data);
   sh.appendRow([id, data.periodo,
                 Number(data.receita || 0), Number(data.despesa || 0),
                 Number(data.receita || 0) - Number(data.despesa || 0),
-                true, new Date().toISOString()]);
+                true, new Date().toISOString(), linha.paroquia_id || '']);
   registrarLog('PUBLICAR', 'Balancete', `periodo=${data.periodo}`);
   return { ok: true, id };
 }

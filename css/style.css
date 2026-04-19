@@ -1,36 +1,36 @@
 /* ===================================================
    SUSTEN - Gestão Paroquial
    Folha de Estilos Principal
-   Tema: Litúrgico Moderno (Púrpura & Dourado)
+   Tema: Clean Moderno (Cinza Claro + Azul Petróleo)
    =================================================== */
 
 /* ─── Reset & Variáveis CSS ─────────────────────── */
 :root {
-  --primary:       #6c3fc5;
-  --primary-dark:  #4e2a9b;
-  --primary-light: #9b6de0;
-  --accent:        #f5a623;
-  --accent-dark:   #d4891a;
+  --primary:       #2f6f7e;
+  --primary-dark:  #255764;
+  --primary-light: #5a95a3;
+  --accent:        #7bc8b7;
+  --accent-dark:   #61a998;
   --success:       #27ae60;
   --danger:        #e74c3c;
   --info:          #2980b9;
-  --bg-dark:       #0f0720;
-  --bg-mid:        #1a0a2e;
-  --bg-card:       #241545;
-  --bg-card2:      #2e1a5a;
-  --text-primary:  #f0eafa;
-  --text-secondary:#b0a0d0;
-  --text-muted:    #7a6a9a;
-  --border:        rgba(108,63,197,0.3);
-  --shadow:        0 8px 32px rgba(0,0,0,0.4);
+  --bg-dark:       #f3f5f7;
+  --bg-mid:        #ffffff;
+  --bg-card:       #ffffff;
+  --bg-card2:      #edf1f5;
+  --text-primary:  #1f2933;
+  --text-secondary:#52606d;
+  --text-muted:    #7b8794;
+  --border:        rgba(15,23,42,0.12);
+  --shadow:        0 10px 24px rgba(15, 23, 42, 0.08);
   --radius:        16px;
   --radius-sm:     10px;
   --radius-xs:     6px;
   --transition:    0.3s ease;
   --whatsapp:      #25D366;
   --whatsapp-dark: #1a9649;
-  --gold:          #f5a623;
-  --gold-glow:     rgba(245,166,35,0.3);
+  --gold:          #7bc8b7;
+  --gold-glow:     rgba(123,200,183,0.25);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -38,7 +38,7 @@
 html { font-size: 16px; scroll-behavior: smooth; }
 
 body {
-  font-family: 'Nunito', 'Segoe UI', sans-serif;
+  font-family: 'Inter', 'Roboto', 'Segoe UI', sans-serif;
   background: var(--bg-dark);
   color: var(--text-primary);
   min-height: 100vh;
@@ -121,7 +121,7 @@ body {
 /* ─── Sidebar ────────────────────────────────────── */
 .sidebar {
   width: 260px; min-height: 100vh;
-  background: linear-gradient(180deg, var(--bg-mid) 0%, var(--bg-dark) 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #f7f9fb 100%);
   border-right: 1px solid var(--border);
   display: flex; flex-direction: column;
   position: fixed; top: 0; left: 0; bottom: 0;
@@ -159,12 +159,12 @@ body {
   position: relative;
 }
 .nav-item:hover {
-  background: rgba(108,63,197,0.15);
+  background: rgba(47,111,126,0.12);
   color: var(--text-primary);
 }
 .nav-item.active {
-  background: linear-gradient(135deg, rgba(108,63,197,0.4), rgba(108,63,197,0.2));
-  color: #fff;
+  background: linear-gradient(135deg, rgba(47,111,126,0.18), rgba(123,200,183,0.16));
+  color: var(--primary-dark);
   box-shadow: inset 3px 0 0 var(--primary);
 }
 .nav-item .nav-icon { font-size: 1.1rem; min-width: 1.4rem; }
@@ -210,7 +210,7 @@ body {
 /* ─── Topbar ─────────────────────────────────────── */
 .topbar {
   height: 64px;
-  background: rgba(26,10,46,0.95);
+  background: rgba(255,255,255,0.96);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center;
@@ -245,7 +245,7 @@ body {
 .topbar-btn.primary:hover { filter: brightness(1.1); }
 
 /* ─── Páginas (Sections) ─────────────────────────── */
-.page { display: none; padding: 1.5rem; animation: fadeInUp 0.4s ease; }
+.page { display: none; padding: 2rem; animation: fadeInUp 0.4s ease; }
 .page.active { display: block; }
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(16px); }
@@ -256,7 +256,7 @@ body {
 .page-header { margin-bottom: 1.5rem; }
 .page-title {
   font-size: 1.5rem; font-weight: 900;
-  background: linear-gradient(135deg, #fff, var(--primary-light));
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   background-clip: text;
   line-height: 1.2;
@@ -268,7 +268,7 @@ body {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 1.25rem;
+  padding: 1.5rem;
   transition: transform var(--transition), box-shadow var(--transition);
 }
 .card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
@@ -896,7 +896,7 @@ textarea.form-control { resize: vertical; min-height: 90px; }
 
 /* ─── Badge de hash (assinatura digital de atas) ── */
 .hash-badge {
-  font-family: 'Lato', monospace;
+  font-family: monospace;
   font-size: 0.72rem; padding: 0.15rem 0.45rem;
   background: rgba(108,63,197,0.18);
   border: 1px solid rgba(108,63,197,0.3);

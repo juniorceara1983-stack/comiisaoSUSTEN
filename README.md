@@ -135,6 +135,7 @@ O sistema é estruturado em torno das **4 dimensões do dízimo** (Doc. 106 CNBB
 comiisaoSUSTEN/
 │
 ├── index.html          # SPA Principal (toda a UI)
+├── Fiel.html           # Interface pública do fiel (sem valores financeiros reais)
 ├── manifest.json       # Manifesto PWA
 ├── sw.js               # Service Worker (cache offline)
 ├── code.gs             # Backend Google Apps Script

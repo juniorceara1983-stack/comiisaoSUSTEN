@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SUSTEN | Portal do Fiel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4f6f8; --card: #fff; --text: #1f2933; --muted: #6b7785;
+      --border: rgba(15,23,42,.12); --primary: #2f6f7e; --accent: #7bc8b7;
+      --ok: #27ae60; --warn: #f5a623; --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 24px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+    .title { font-size: 1.35rem; margin: 0 0 8px; }
+    .sub { color: var(--muted); margin: 0; }
+    .grid { display: grid; gap: 16px; }
+    .grid.two { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .login { display: flex; flex-wrap: wrap; gap: 10px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+    input, button { border-radius: 10px; border: 1px solid var(--border); padding: 10px 12px; font-family: inherit; }
+    input { flex: 1; min-width: 220px; }
+    button { background: var(--primary); color: #fff; border: none; cursor: pointer; }
+    .muted { color: var(--muted); font-size: .9rem; }
+    .progress { height: 10px; border-radius: 999px; background: #e9eef2; overflow: hidden; }
+    .progress > span { display: block; height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); }
+    .status { font-size: .78rem; font-weight: 700; border-radius: 999px; padding: 4px 8px; display: inline-block; }
+    .status.ok { background: rgba(39,174,96,.15); color: var(--ok); }
+    .status.warn { background: rgba(245,166,35,.18); color: #8f6100; }
+    .status.done { background: rgba(47,111,126,.15); color: var(--primary); }
+    ul { margin: 0; padding-left: 18px; }
+    li { margin: 6px 0; }
+    .pix { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+    .pix img { width: 140px; height: 140px; border-radius: 10px; border: 1px solid var(--border); background: #fff; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="card">
+      <h1 class="title">Portal do Fiel</h1>
+      <p class="sub">Acompanhe novidades, reformas e comunicados da sua paróquia sem exposição de valores financeiros.</p>
+      <form class="login" id="loginForm" style="margin-top:12px">
+        <label for="email" class="sr-only">E-mail Google</label>
+        <input id="email" type="email" placeholder="Seu e-mail Google (somente para conferência visual)" />
+        <button id="btnEntrar" type="submit">Entrar</button>
+      </form>
+      <p class="muted" id="sessao"></p>
+    </section>
+
+    <section class="grid two">
+      <article class="card">
+        <h2 class="title" style="font-size:1.05rem">Novidades e Comunicados</h2>
+        <ul id="novidades"></ul>
+      </article>
+      <article class="card">
+        <h2 class="title" style="font-size:1.05rem">PIX e QR Code</h2>
+        <div class="pix">
+          <img id="qrPix" alt="QR Code PIX" />
+          <div>
+            <div><strong>Chave PIX:</strong> <span id="pixChave">—</span></div>
+            <div class="muted">Valores reais são ocultados no perfil Fiel.</div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="card">
+      <h2 class="title" style="font-size:1.05rem">Status de Reformas</h2>
+      <div id="reformas" class="grid"></div>
+    </section>
+
+    <section class="grid two">
+      <article class="card">
+        <h2 class="title" style="font-size:1.05rem">Distribuição de Gastos (%)</h2>
+        <canvas id="chartGastos" height="240"></canvas>
+      </article>
+      <article class="card">
+        <h2 class="title" style="font-size:1.05rem">Resumo Visual</h2>
+        <div id="resumo"></div>
+      </article>
+    </section>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script>
+    const el = id => document.getElementById(id);
+    let chart;
+
+    function mascararValor(valor) {
+      if (valor === null || valor === undefined || valor === '') return '—';
+      return 'R$ •••••';
+    }
+
+    function statusClass(status) {
+      const s = String(status || '').toLowerCase();
+      if (s.includes('concl')) return 'done';
+      if (s.includes('andamento') || s.includes('realizada')) return 'warn';
+      return 'ok';
+    }
+
+    function renderPainel(data) {
+      const usuario = data.usuario || {};
+      const paroquia = data.paroquia || {};
+      const novidades = data.novidades || [];
+      const reformas = data.status_reformas || [];
+      const dist = data.distribuicao_gastos || [];
+
+      el('sessao').textContent = `Paróquia: ${paroquia.nome || 'Não informada'} • Perfil: ${usuario.perfil || 'fiel'}`;
+      el('pixChave').textContent = paroquia.pix_chave || 'Não informada';
+      el('qrPix').src = paroquia.qr_code_pix || '';
+      el('qrPix').style.display = paroquia.qr_code_pix ? 'block' : 'none';
+
+      el('novidades').innerHTML = novidades.map(n =>
+        `<li><strong>${n.titulo || 'Comunicado'}</strong> — ${n.mensagem || ''}</li>`
+      ).join('') || '<li>Sem novidades no momento.</li>';
+
+      el('reformas').innerHTML = reformas.map(r => `
+        <div class="card" style="margin:0">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+            <strong>${r.titulo || 'Projeto'}</strong>
+            <span class="status ${statusClass(r.status)}">${r.status || 'Em andamento'}</span>
+          </div>
+          <p class="muted">${r.descricao || ''}</p>
+          <div class="progress"><span style="width:${Number(r.percentual_conclusao || 0)}%"></span></div>
+          <p class="muted">${Number(r.percentual_conclusao || 0)}% concluído • Valor: ${mascararValor(r.valor_mascarado)}</p>
+        </div>
+      `).join('') || '<p class="muted">Sem status de reforma disponível.</p>';
+
+      const media = reformas.length
+        ? Math.round(reformas.reduce((s, r) => s + Number(r.percentual_conclusao || 0), 0) / reformas.length)
+        : 0;
+      el('resumo').innerHTML = `
+        <p><strong>Meta média de conclusão:</strong> ${media}%</p>
+        <p><strong>Indicador financeiro:</strong> Valor oculto para o perfil Fiel</p>
+        <p class="muted">Indicadores são apresentados apenas de forma qualitativa e percentual.</p>
+      `;
+
+      if (chart) chart.destroy();
+      chart = new Chart(el('chartGastos'), {
+        type: 'pie',
+        data: {
+          labels: dist.map(d => d.categoria),
+          datasets: [{ data: dist.map(d => Number(d.percentual || 0)), backgroundColor: ['#2f6f7e','#7bc8b7','#5a95a3','#9fbec7','#d5e4e8'] }]
+        },
+        options: {
+          plugins: {
+            tooltip: { callbacks: { label: c => `${c.label}: ${Number(c.parsed).toFixed(1)}%` } },
+            legend: { position: 'bottom' }
+          }
+        }
+      });
+    }
+
+    async function carregarPainel() {
+      const dados = await API.getFielPainel();
+      if (dados && !dados.erro) return renderPainel(dados);
+
+      const fallback = {
+        usuario: { perfil: 'fiel' },
+        paroquia: {
+          nome: DEMO_DATA.paroquia.nome,
+          pix_chave: DEMO_DATA.paroquia.pixChave,
+          qr_code_pix: ''
+        },
+        novidades: [{ titulo: 'Aviso geral', mensagem: 'Use o painel admin para publicar novidades e recados.' }],
+        status_reformas: DEMO_DATA.metas.map(m => ({
+          titulo: m.titulo, descricao: m.descricao, percentual_conclusao: Math.round((m.arrecadado / m.meta) * 100), status: m.status
+        })),
+        distribuicao_gastos: (() => {
+          const total = DEMO_DATA.financeiro.distribuicao.reduce((s, d) => s + Number(d.valor || 0), 0) || 1;
+          return DEMO_DATA.financeiro.distribuicao.map(d => ({ categoria: d.categoria, percentual: (Number(d.valor || 0) / total) * 100 }));
+        })()
+      };
+      renderPainel(fallback);
+    }
+
+    el('loginForm').addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      carregarPainel();
+    });
+    carregarPainel();
+  </script>
+</body>
+</html>
