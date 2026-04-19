@@ -218,8 +218,7 @@ function _emailLogado() {
 function _resolverContextoUsuario(payload) {
   const headersUsuarios = ['id','email','nome','paroquia_id','perfil','ativo'];
   _garantirCabecalho(SHEETS.USUARIOS, headersUsuarios);
-  const emailRequisicao = payload && payload.email ? String(payload.email).trim().toLowerCase() : '';
-  const email = _emailLogado() || emailRequisicao;
+  const email = _emailLogado();
   if (!email) return { ok: false, erro: 'Não foi possível identificar o e-mail do usuário.' };
 
   const usuarios = _lerAbaSemFiltro(SHEETS.USUARIOS);
@@ -552,8 +551,7 @@ function getSessaoUsuario() {
     usuario: {
       email: ctx.email,
       nome: ctx.nome,
-      perfil: ctx.perfil,
-      paroquia_id: ctx.paroquia_id
+      perfil: ctx.perfil
     }
   };
 }
@@ -578,7 +576,7 @@ function getFielPainel() {
       titulo: m.titulo,
       descricao: m.descricao || '',
       percentual_conclusao: percentual,
-      status: statusMap[String(m.status || '').toLowerCase()] || 'Compra Realizada',
+      status: statusMap[String(m.status || '').toLowerCase()] || 'Status não definido',
       valor_mascarado: _mascararMoeda(meta)
     };
   });
@@ -593,8 +591,7 @@ function getFielPainel() {
     ok: true,
     usuario: {
       nome: ctx.nome,
-      perfil: ctx.perfil,
-      paroquia_id: ctx.paroquia_id
+      perfil: ctx.perfil
     },
     paroquia: {
       nome: config.nome || '',

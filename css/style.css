@@ -896,7 +896,7 @@ textarea.form-control { resize: vertical; min-height: 90px; }
 
 /* ─── Badge de hash (assinatura digital de atas) ── */
 .hash-badge {
-  font-family: 'Roboto', monospace;
+  font-family: monospace;
   font-size: 0.72rem; padding: 0.15rem 0.45rem;
   background: rgba(108,63,197,0.18);
   border: 1px solid rgba(108,63,197,0.3);

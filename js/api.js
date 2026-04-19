@@ -76,7 +76,7 @@ const API = (() => {
   // ── Configurações ─────────────────────────────────────────────
   const getConfig = ()              => _fetch('getConfig');
   const saveConfig = (data)         => _post('saveConfig', data);
-  const getSessaoUsuario = (email)  => _fetch('getSessaoUsuario', email ? { email } : {});
+  const getSessaoUsuario = ()       => _fetch('getSessaoUsuario');
 
   // ── Fundo Caritativo (Dimensão Caritativa) ────────────────────
   const getFundoCaritativo    = ()       => _fetch('getFundoCaritativo');
@@ -114,7 +114,7 @@ const API = (() => {
   const getPrestacaoContas   = ()     => _fetch('getPrestacaoContas');
   const publicarBalancete    = (data) => _post('publicarBalancete', data);
   const getTransparenciaPublica = () => _fetch('getTransparenciaPublica');
-  const getFielPainel = (email) => _fetch('getFielPainel', email ? { email } : {});
+  const getFielPainel = () => _fetch('getFielPainel');
   const getRecados = () => _fetch('getRecados');
   const addRecado = (data) => _post('addRecado', data);
 
