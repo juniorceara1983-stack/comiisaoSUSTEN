@@ -113,6 +113,7 @@
       el('sessao').textContent = `Paróquia: ${paroquia.nome || 'Não informada'} • Perfil: ${usuario.perfil || 'fiel'}`;
       el('pixChave').textContent = paroquia.pix_chave || 'Não informada';
       el('qrPix').src = paroquia.qr_code_pix || '';
+      el('qrPix').style.display = paroquia.qr_code_pix ? 'block' : 'none';
 
       el('novidades').innerHTML = novidades.map(n =>
         `<li><strong>${n.titulo || 'Comunicado'}</strong> — ${n.mensagem || ''}</li>`
@@ -164,13 +165,16 @@
         paroquia: {
           nome: DEMO_DATA.paroquia.nome,
           pix_chave: DEMO_DATA.paroquia.pixChave,
-          qr_code_pix: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(DEMO_DATA.paroquia.pixChave)}`
+          qr_code_pix: ''
         },
         novidades: [{ titulo: 'Aviso geral', mensagem: 'Use o painel admin para publicar novidades e recados.' }],
         status_reformas: DEMO_DATA.metas.map(m => ({
           titulo: m.titulo, descricao: m.descricao, percentual_conclusao: Math.round((m.arrecadado / m.meta) * 100), status: m.status
         })),
-        distribuicao_gastos: DEMO_DATA.financeiro.distribuicao.map(d => ({ categoria: d.categoria, percentual: (d.valor / 8230) * 100 }))
+        distribuicao_gastos: (() => {
+          const total = DEMO_DATA.financeiro.distribuicao.reduce((s, d) => s + Number(d.valor || 0), 0) || 1;
+          return DEMO_DATA.financeiro.distribuicao.map(d => ({ categoria: d.categoria, percentual: (Number(d.valor || 0) / total) * 100 }));
+        })()
       };
       renderPainel(fallback);
     }

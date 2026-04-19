@@ -40,6 +40,13 @@ const CATEGORIAS_PARTILHA_AD_EXTRA = [
   'Santa Infância'
 ];
 
+const MAX_NOVIDADES_PAINEL_FIEL = 6;
+const PROGRESSO_MANUTENCAO_PADRAO = {
+  concluida: 100,
+  'em-andamento': 65,
+  planejada: 35
+};
+
 /* ── Acesso à planilha ativa ──────────────────────────────── */
 /**
  * ID da planilha Google Sheets utilizada pelo SUSTEN.
@@ -258,12 +265,6 @@ function _enriquecerComParoquia(data) {
   const clone = Object.assign({}, data || {});
   if (ctx && _normalizarIdParoquia(ctx.paroquia_id)) clone.paroquia_id = ctx.paroquia_id;
   return clone;
-}
-
-function _gerarUrlQrPix(chavePix) {
-  const chave = String(chavePix || '').trim();
-  if (!chave) return '';
-  return 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(chave);
 }
 
 function _mascararMoeda(valor) {
@@ -599,9 +600,9 @@ function getFielPainel() {
       nome: config.nome || '',
       pix_tipo: config.pixTipo || '',
       pix_chave: config.pixChave || '',
-      qr_code_pix: config.pixQrUrl || _gerarUrlQrPix(config.pixChave)
+      qr_code_pix: config.pixQrUrl || ''
     },
-    novidades: recados.slice(0, 6).map(r => ({
+    novidades: recados.slice(0, MAX_NOVIDADES_PAINEL_FIEL).map(r => ({
       id: r.id,
       data: r.data,
       titulo: r.titulo,
@@ -614,7 +615,7 @@ function getFielPainel() {
         id: `mant-${m.id}`,
         titulo: m.bem,
         descricao: m.descricao || '',
-        percentual_conclusao: String(m.status || '').toLowerCase() === 'concluida' ? 100 : 55,
+        percentual_conclusao: PROGRESSO_MANUTENCAO_PADRAO[String(m.status || '').toLowerCase()] || 50,
         status: String(m.status || '').toLowerCase() === 'concluida' ? 'Concluído' : 'Em andamento',
         valor_mascarado: _mascararMoeda(m.custo_estimado)
       }))
