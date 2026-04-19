@@ -77,6 +77,12 @@ const copyText = (txt, btn) => {
   }).catch(() => toast('Não foi possível copiar', 'error'));
 };
 
+const normalizarTexto = (v = '') => String(v)
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .trim()
+  .toLowerCase();
+
 /* ── Navegação ──────────────────────────────────────────────── */
 const navigate = pageName => {
   if (State.currentPage === pageName) return;
@@ -611,7 +617,9 @@ const renderMembros = () => {
 
   const filtered = membros.filter(m => {
     const matchSearch = !search || m.nome.toLowerCase().includes(search);
-    const matchFilter = filterMembros === 'todos' || m.status === filterMembros || m.categoria.toLowerCase() === filterMembros;
+    const matchFilter = filterMembros === 'todos' ||
+      m.status === filterMembros ||
+      normalizarTexto(m.categoria) === normalizarTexto(filterMembros);
     return matchSearch && matchFilter;
   });
 
@@ -627,11 +635,21 @@ const renderMembros = () => {
       <td class="${m.valor > 0 ? 'text-accent fw-bold' : 'text-muted'}">${m.valor > 0 ? fmt.moeda(m.valor) : '—'}</td>
       <td>
         <button class="btn btn-whatsapp btn-sm btn-icon" onclick="enviarWhatsApp('${m.telefone}','agradecimento-dizimo','${m.nome}')" title="WhatsApp">💬</button>
+        ${normalizarTexto(m.categoria) === 'nao dizimista' ? `<button class="btn btn-primary btn-sm" onclick="marcarComoDizimista(${m.id})" title="Converter para dizimista">✅ Dizimista</button>` : ''}
         <button class="btn btn-outline btn-sm btn-icon" onclick="editarMembro(${m.id})" title="Editar">✏️</button>
         <button class="btn btn-outline btn-sm btn-icon" onclick="excluirMembro(${m.id})" title="Excluir">🗑️</button>
       </td>
     </tr>
   `).join('') || `<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">👥</div><div class="empty-state-text">Nenhum membro encontrado</div></div></td></tr>`;
+};
+
+window.marcarComoDizimista = id => {
+  const idx = State.membros.findIndex(m => m.id === id);
+  if (idx === -1) return;
+  State.membros[idx].categoria = 'Dizimista';
+  renderMembros();
+  toast('Fiel movido para dizimistas.', 'success');
+  API.updateMembro(State.membros[idx]).catch(() => {});
 };
 
 window.editarMembro = id => {

@@ -24,8 +24,8 @@
     .grid.two { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
     .login { display: flex; flex-wrap: wrap; gap: 10px; }
     .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
-    input, button { border-radius: 10px; border: 1px solid var(--border); padding: 10px 12px; font-family: inherit; }
-    input { flex: 1; min-width: 220px; }
+    input, select, button { border-radius: 10px; border: 1px solid var(--border); padding: 10px 12px; font-family: inherit; }
+    input, select { flex: 1; min-width: 190px; }
     button { background: var(--primary); color: #fff; border: none; cursor: pointer; }
     .muted { color: var(--muted); font-size: .9rem; }
     .progress { height: 10px; border-radius: 999px; background: #e9eef2; overflow: hidden; }
@@ -38,16 +38,28 @@
     li { margin: 6px 0; }
     .pix { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
     .pix img { width: 140px; height: 140px; border-radius: 10px; border: 1px solid var(--border); background: #fff; }
+    .quiz-options { display: grid; gap: 8px; margin-top: 12px; }
+    .quiz-options button { text-align: left; background: #eef4f6; color: var(--text); border: 1px solid var(--border); }
   </style>
 </head>
 <body>
   <div class="wrap">
     <section class="card">
       <h1 class="title">Portal do Fiel</h1>
-      <p class="sub">Acompanhe novidades, reformas e comunicados da sua paróquia sem exposição de valores financeiros.</p>
+      <p class="sub">Acompanhe novidades, reformas e comunicados da sua paróquia.</p>
       <form class="login" id="loginForm" style="margin-top:12px">
-        <label for="email" class="sr-only">E-mail Google</label>
-        <input id="email" type="email" placeholder="Seu e-mail Google (somente para conferência visual)" />
+        <label for="login" class="sr-only">Nome</label>
+        <input id="login" type="text" placeholder="Nome (login)" required />
+        <label for="senha" class="sr-only">Senha</label>
+        <input id="senha" type="tel" placeholder="Senha (número do WhatsApp)" required />
+        <label for="paroquia" class="sr-only">Paróquia</label>
+        <select id="paroquia" required></select>
+        <label for="dizimista" class="sr-only">É dizimista?</label>
+        <select id="dizimista" required>
+          <option value="">É dizimista?</option>
+          <option value="sim">Sim</option>
+          <option value="nao">Não</option>
+        </select>
         <button id="btnEntrar" type="submit">Entrar</button>
       </form>
       <p class="muted" id="sessao"></p>
@@ -64,10 +76,25 @@
           <img id="qrPix" alt="QR Code PIX" />
           <div>
             <div><strong>Chave PIX:</strong> <span id="pixChave">—</span></div>
-            <div class="muted">Valores reais são ocultados no perfil Fiel.</div>
           </div>
         </div>
       </article>
+    </section>
+
+    <section class="grid two">
+      <article class="card">
+        <h2 class="title" style="font-size:1.05rem">Liturgia Diária</h2>
+        <div id="liturgiaDiaria"></div>
+      </article>
+      <article class="card">
+        <h2 class="title" style="font-size:1.05rem">Santo do Dia</h2>
+        <div id="santoDoDia"></div>
+      </article>
+    </section>
+
+    <section class="card">
+      <h2 class="title" style="font-size:1.05rem">Quiz do Dia</h2>
+      <div id="quizDoDia"></div>
     </section>
 
     <section class="card">
@@ -91,12 +118,9 @@
   <script src="js/api.js"></script>
   <script>
     const el = id => document.getElementById(id);
+    const STORAGE_KEY = 'susten_fiel_auth';
     let chart;
-
-    function mascararValor(valor) {
-      if (valor === null || valor === undefined || valor === '') return '—';
-      return 'R$ •••••';
-    }
+    let quizResposta = -1;
 
     function statusClass(status) {
       const s = String(status || '').toLowerCase();
@@ -105,12 +129,33 @@
       return 'ok';
     }
 
+    function normalizarZap55(valor) {
+      const digits = String(valor || '').replace(/\D/g, '');
+      if (!digits) return '';
+      return digits.startsWith('55') ? digits : `55${digits}`;
+    }
+
+    function salvarSessaoLocal(sessao) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessao));
+    }
+
+    function obterSessaoLocal() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+      } catch (_) {
+        return null;
+      }
+    }
+
     function renderPainel(data) {
       const usuario = data.usuario || {};
       const paroquia = data.paroquia || {};
       const novidades = data.novidades || [];
       const reformas = data.status_reformas || [];
       const dist = data.distribuicao_gastos || [];
+      const liturgia = data.liturgia_diaria || {};
+      const santo = data.santo_do_dia || {};
+      const quiz = data.quiz || {};
 
       el('sessao').textContent = `Paróquia: ${paroquia.nome || 'Não informada'} • Perfil: ${usuario.perfil || 'fiel'}`;
       el('pixChave').textContent = paroquia.pix_chave || 'Não informada';
@@ -129,7 +174,7 @@
           </div>
           <p class="muted">${r.descricao || ''}</p>
           <div class="progress"><span style="width:${Number(r.percentual_conclusao || 0)}%"></span></div>
-          <p class="muted">${Number(r.percentual_conclusao || 0)}% concluído • Valor: ${mascararValor(r.valor_mascarado)}</p>
+          <p class="muted">${Number(r.percentual_conclusao || 0)}% concluído</p>
         </div>
       `).join('') || '<p class="muted">Sem status de reforma disponível.</p>';
 
@@ -138,9 +183,29 @@
         : 0;
       el('resumo').innerHTML = `
         <p><strong>Meta média de conclusão:</strong> ${media}%</p>
-        <p><strong>Indicador financeiro:</strong> Valor oculto para o perfil Fiel</p>
-        <p class="muted">Indicadores são apresentados apenas de forma qualitativa e percentual.</p>
+        <p class="muted">Indicadores apresentados de forma qualitativa e percentual.</p>
       `;
+
+      el('liturgiaDiaria').innerHTML = `
+        <p><strong>${liturgia.titulo || 'Mensagem do Dia'}</strong></p>
+        <p>${liturgia.mensagem || 'Sem conteúdo disponível no momento.'}</p>
+        <p class="muted">${liturgia.referencia || ''}</p>
+      `;
+
+      el('santoDoDia').innerHTML = `
+        <p><strong>${santo.nome || 'Santo do dia'}</strong></p>
+        <p>${santo.exemplo || ''}</p>
+      `;
+
+      const opcoesQuiz = Array.isArray(quiz.opcoes) ? quiz.opcoes : [];
+      el('quizDoDia').innerHTML = `
+        <p><strong>${quiz.pergunta || 'Sem quiz disponível no momento.'}</strong></p>
+        <div class="quiz-options">
+          ${opcoesQuiz.map((op, idx) => `<button type="button" onclick="responderQuiz(${idx})">${op}</button>`).join('')}
+        </div>
+        <p class="muted" id="quizFeedback"></p>
+      `;
+      quizResposta = Number(quiz.resposta);
 
       if (chart) chart.destroy();
       chart = new Chart(el('chartGastos'), {
@@ -158,8 +223,23 @@
       });
     }
 
+    async function carregarParoquias() {
+      const dados = await API.getParoquiasFiel();
+      const paroquias = (dados && dados.ok && Array.isArray(dados.paroquias) && dados.paroquias.length)
+        ? dados.paroquias
+        : [{ id: 'paroquia-geral', nome: 'Paróquia Geral' }];
+      el('paroquia').innerHTML = `<option value="">Selecione a paróquia</option>` +
+        paroquias.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+    }
+
     async function carregarPainel() {
-      const dados = await API.getFielPainel();
+      const sessao = obterSessaoLocal();
+      if (!sessao || !sessao.login || !sessao.senha || !sessao.paroquia_id) {
+        el('sessao').textContent = 'Informe login, senha e paróquia para acessar.';
+        return;
+      }
+
+      const dados = await API.getFielPainelPublico(sessao);
       if (dados && !dados.erro) return renderPainel(dados);
 
       const fallback = {
@@ -176,16 +256,43 @@
         distribuicao_gastos: (() => {
           const total = DEMO_DATA.financeiro.distribuicao.reduce((s, d) => s + Number(d.valor || 0), 0) || 1;
           return DEMO_DATA.financeiro.distribuicao.map(d => ({ categoria: d.categoria, percentual: (Number(d.valor || 0) / total) * 100 }));
-        })()
+        })(),
+        liturgia_diaria: { referencia: 'Jo 13,34', titulo: 'Mandamento do Amor', mensagem: 'Amai-vos uns aos outros como eu vos amei.' },
+        santo_do_dia: { nome: 'São José', exemplo: 'Fidelidade e serviço.' },
+        quiz: { pergunta: 'Qual valor fortalece a comunidade?', opcoes: ['Partilha', 'Indiferença', 'Competição'], resposta: 0 }
       };
       renderPainel(fallback);
     }
 
-    el('loginForm').addEventListener('submit', (ev) => {
+    window.responderQuiz = function(indice) {
+      const fb = el('quizFeedback');
+      if (!fb) return;
+      fb.textContent = Number(indice) === Number(quizResposta) ? '✅ Resposta correta!' : '❌ Tente novamente.';
+    };
+
+    el('loginForm').addEventListener('submit', async (ev) => {
       ev.preventDefault();
-      carregarPainel();
+      const login = el('login').value.trim();
+      const senha = normalizarZap55(el('senha').value);
+      const paroquia_id = el('paroquia').value;
+      const dizimista = el('dizimista').value;
+
+      if (!login || !senha || !paroquia_id || !dizimista) {
+        el('sessao').textContent = 'Preencha login, senha, paróquia e se é dizimista.';
+        return;
+      }
+
+      const auth = await API.loginFiel({ login, senha, paroquia_id, dizimista });
+      if (!auth || !auth.ok) {
+        el('sessao').textContent = auth?.erro || 'Não foi possível autenticar no momento.';
+        return;
+      }
+
+      salvarSessaoLocal({ login: auth.login || login, senha: auth.senha || senha, paroquia_id: auth.paroquia_id || paroquia_id });
+      await carregarPainel();
     });
-    carregarPainel();
+
+    carregarParoquias().then(carregarPainel);
   </script>
 </body>
 </html>
