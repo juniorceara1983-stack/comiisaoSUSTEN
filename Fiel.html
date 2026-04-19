@@ -23,6 +23,7 @@
     .grid { display: grid; gap: 16px; }
     .grid.two { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
     .login { display: flex; flex-wrap: wrap; gap: 10px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
     input, button { border-radius: 10px; border: 1px solid var(--border); padding: 10px 12px; font-family: inherit; }
     input { flex: 1; min-width: 220px; }
     button { background: var(--primary); color: #fff; border: none; cursor: pointer; }
@@ -44,10 +45,11 @@
     <section class="card">
       <h1 class="title">Portal do Fiel</h1>
       <p class="sub">Acompanhe novidades, reformas e comunicados da sua paróquia sem exposição de valores financeiros.</p>
-      <div class="login" style="margin-top:12px">
+      <form class="login" id="loginForm" style="margin-top:12px">
+        <label for="email" class="sr-only">E-mail Google</label>
         <input id="email" type="email" placeholder="Seu e-mail Google (somente para conferência visual)" />
-        <button id="btnEntrar">Entrar</button>
-      </div>
+        <button id="btnEntrar" type="submit">Entrar</button>
+      </form>
       <p class="muted" id="sessao"></p>
     </section>
 
@@ -179,7 +181,10 @@
       renderPainel(fallback);
     }
 
-    el('btnEntrar').addEventListener('click', () => carregarPainel());
+    el('loginForm').addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      carregarPainel();
+    });
     carregarPainel();
   </script>
 </body>
