@@ -46,6 +46,7 @@ const PROGRESSO_MANUTENCAO_PADRAO = {
   'em-andamento': 65,
   planejada: 35
 };
+const ACOES_PERMITIDAS_FIEL = ['getSessaoUsuario', 'getFielPainel', 'getTransparenciaPublica'];
 
 /* ── Acesso à planilha ativa ──────────────────────────────── */
 /**
@@ -240,9 +241,8 @@ function _temPermissaoParaAcao(perfil, action, metodo) {
   const perfilNorm = String(perfil || 'fiel').toLowerCase();
   if (perfilNorm === 'admin' || perfilNorm === 'coordenador' || perfilNorm === 'padre') return true;
 
-  const permitidasFiel = ['getSessaoUsuario', 'getFielPainel', 'getTransparenciaPublica'];
   if (metodo === 'POST') return false;
-  return permitidasFiel.indexOf(action) !== -1;
+  return ACOES_PERMITIDAS_FIEL.indexOf(action) !== -1;
 }
 
 function _deveFiltrarPorParoquia(nomeAba) {
