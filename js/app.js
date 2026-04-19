@@ -651,7 +651,7 @@ window.marcarComoDizimista = id => {
   State.membros[idx].categoria = CATEGORIA_DIZIMISTA;
   renderMembros();
   toast('Fiel convertido para dizimista.', 'success');
-  API.updateMembro(State.membros[idx]).catch(() => {});
+  API.updateMembro(State.membros[idx]).catch(() => toast('Não foi possível atualizar no servidor agora.', 'warning'));
 };
 
 window.editarMembro = id => {
