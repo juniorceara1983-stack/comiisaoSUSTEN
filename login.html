@@ -68,18 +68,6 @@
       <select id="f-paroquia" required>
         <option value="">Carregando…</option>
       </select>
-      <div id="box-paroquia-nova" style="display:none">
-        <label for="f-paroquia-nova">Nova paróquia</label>
-        <input id="f-paroquia-nova" type="text" placeholder="Ex: Paróquia São José" />
-        <div class="hint">Digite o nome da nova paróquia para cadastrá-la.</div>
-
-        <label for="f-capelas">Capelas da paróquia (opcional)</label>
-        <textarea id="f-capelas" rows="3" placeholder="Uma capela por linha. Ex:
-Capela Nossa Senhora de Fátima
-Capela Santo Antônio"></textarea>
-        <div class="hint">Você poderá adicionar/editar capelas depois em Configurações.</div>
-      </div>
-
       <div id="box-dizimista">
         <label for="f-dizimista">É dizimista?</label>
         <select id="f-dizimista">
@@ -117,34 +105,13 @@ Capela Santo Antônio"></textarea>
         m.className = 'msg' + (tipo ? ' ' + tipo : '');
       }
 
-      function normalizarParoquiaId(valor) {
-        return String(valor || '')
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .trim()
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '');
-      }
-
-      function atualizarCampoNovaParoquia() {
-        const box = el('box-paroquia-nova');
-        const sel = el('f-paroquia');
-        const input = el('f-paroquia-nova');
-        const isNova = sel && sel.value === '__nova__';
-        if (box) box.style.display = isNova ? 'block' : 'none';
-        if (!isNova && input) input.value = '';
-      }
-
       async function carregarParoquias() {
         const dados = await API.getParoquiasFiel();
         const paroquias = (dados && dados.ok && Array.isArray(dados.paroquias))
           ? dados.paroquias
           : [];
         el('f-paroquia').innerHTML = '<option value="">Selecione a paróquia</option>' +
-          paroquias.map(p => `<option value="${p.id}">${p.nome}</option>`).join('') +
-          '<option value="__nova__">+ Cadastrar nova paróquia</option>';
-        atualizarCampoNovaParoquia();
+          paroquias.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
       }
 
       el('form-login').addEventListener('submit', async (ev) => {
@@ -153,17 +120,9 @@ Capela Santo Antônio"></textarea>
         const nome = el('f-nome').value.trim();
         const email = el('f-email').value.trim().toLowerCase();
         const telefone = el('f-telefone').value.trim();
-        const paroquiaSel = el('f-paroquia').value;
-        const paroquiaNova = el('f-paroquia-nova').value.trim();
-        const paroquia_id = paroquiaSel === '__nova__'
-          ? normalizarParoquiaId(paroquiaNova)
-          : paroquiaSel;
+        const paroquia_id = el('f-paroquia').value;
         const dizimista = el('f-dizimista').value;
 
-        if (paroquiaSel === '__nova__' && !paroquiaNova) {
-          setMsg('Informe o nome da nova paróquia.', 'err');
-          return;
-        }
         if (!nome || !email || !telefone || !paroquia_id) {
           setMsg('Preencha nome, e-mail, telefone e paróquia.', 'err');
           return;
@@ -178,10 +137,6 @@ Capela Santo Antônio"></textarea>
             email: email,
             telefone: telefone,
             paroquia_id: paroquia_id,
-            paroquia_nome: paroquiaSel === '__nova__' ? paroquiaNova : undefined,
-            capelas: paroquiaSel === '__nova__'
-              ? el('f-capelas').value.split(/\r?\n/).map(s => s.trim()).filter(Boolean).map(nome => ({ nome: nome }))
-              : undefined,
             dizimista: dizimista
           });
           if (!resp) {
@@ -225,7 +180,6 @@ Capela Santo Antônio"></textarea>
         }
       });
 
-      el('f-paroquia').addEventListener('change', atualizarCampoNovaParoquia);
       carregarParoquias();
     })();
   </script>

@@ -36,10 +36,6 @@
     .status.done { background: rgba(47,111,126,.15); color: var(--primary); }
     ul { margin: 0; padding-left: 18px; }
     li { margin: 6px 0; }
-    .pix { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
-    .pix img { width: 140px; height: 140px; border-radius: 10px; border: 1px solid var(--border); background: #fff; }
-    .quiz-options { display: grid; gap: 8px; margin-top: 12px; }
-    .quiz-options button { text-align: left; background: #eef4f6; color: var(--text); border: 1px solid var(--border); }
     .action-btn { background: linear-gradient(90deg, #2f6f7e, #4f8f9f); border-radius: 999px; padding: 9px 16px; font-weight: 700; }
     .link-btn { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; background: #eef4f6; color: #205463; border: 1px solid var(--border); text-decoration: none; padding: 8px 12px; border-radius: 10px; font-weight: 600; }
     .tips-list li, .bible-list li { margin-bottom: 10px; }
@@ -73,20 +69,9 @@
       <p class="muted" id="sessao"></p>
     </section>
 
-    <section class="grid two">
-      <article class="card">
-        <h2 class="title" style="font-size:1.05rem">Novidades e Comunicados</h2>
-        <ul id="novidades"></ul>
-      </article>
-      <article class="card">
-        <h2 class="title" style="font-size:1.05rem">PIX e QR Code</h2>
-        <div class="pix">
-          <img id="qrPix" alt="QR Code PIX" />
-          <div>
-            <div><strong>Chave PIX:</strong> <span id="pixChave">—</span></div>
-          </div>
-        </div>
-      </article>
+    <section class="card">
+      <h2 class="title" style="font-size:1.05rem">Novidades e Comunicados</h2>
+      <ul id="novidades"></ul>
     </section>
 
     <section class="grid two">
@@ -100,11 +85,6 @@
         <div id="santoDoDia"></div>
         <a class="link-btn" id="btnSantoLink" href="https://santo.cancaonova.com/" target="_blank" rel="noopener">🌟 Abrir santo do dia</a>
       </article>
-    </section>
-
-    <section class="card">
-      <h2 class="title" style="font-size:1.05rem">Quiz do Dia</h2>
-      <div id="quizDoDia"></div>
     </section>
 
     <section class="grid two">
@@ -176,7 +156,6 @@
     const STORAGE_KEY = 'susten_fiel_auth';
     const SESSION_KEY = 'susten_sessao';
     let chart;
-    let quizResposta = {};
 
     // Guarda de sessão: exige login na tela unificada.
     (function ensureSession() {
@@ -220,14 +199,10 @@
       const dist = data.distribuicao_gastos || [];
       const liturgia = data.liturgia_diaria || {};
       const santo = data.santo_do_dia || {};
-      const quiz = data.quiz || {};
       const dicasEconomia = Array.isArray(data.dicas_economia) ? data.dicas_economia : [];
       const msgBiblica = data.mensagem_biblica_diaria || {};
 
       el('sessao').textContent = `Paróquia: ${paroquia.nome || 'Não informada'} • Perfil: ${usuario.perfil || 'fiel'}`;
-      el('pixChave').textContent = paroquia.pix_chave || 'Não informada';
-      el('qrPix').src = paroquia.qr_code_pix || '';
-      el('qrPix').style.display = paroquia.qr_code_pix ? 'block' : 'none';
 
       // Aba Dízimo Digital (espelho do coordenador)
       const ddBanco = el('dd-pix-banco'); if (ddBanco) ddBanco.textContent = paroquia.pix_banco || '—';
@@ -315,19 +290,6 @@
       `;
       if (el('btnSantoLink')) el('btnSantoLink').href = santo.link || 'https://santo.cancaonova.com/';
 
-      const perguntasQuiz = Array.isArray(quiz.perguntas) ? quiz.perguntas : [];
-      el('quizDoDia').innerHTML = perguntasQuiz.map((q, qIdx) => `
-        <div class="card" style="margin:0 0 10px 0;padding:14px">
-          <p><strong>${qIdx + 1}. ${q.pergunta || 'Pergunta'}</strong> <span class="muted">${q.tema ? `• ${q.tema}` : ''}</span></p>
-          <button type="button" class="action-btn" id="quizAbrir-${qIdx}" aria-label="Abrir opções de resposta da pergunta ${qIdx + 1}" aria-expanded="false" onclick="abrirQuiz(${qIdx})">📝 Abrir opções de resposta</button>
-          <div class="quiz-options" id="quizOpcoes-${qIdx}" style="display:none">
-            ${(Array.isArray(q.opcoes) ? q.opcoes : []).map((op, idx) => `<button type="button" aria-label="Opção ${idx + 1}: ${op}" onclick="responderQuiz(${qIdx},${idx})">${op}</button>`).join('')}
-          </div>
-          <p class="muted" id="quizFeedback-${qIdx}"></p>
-        </div>
-      `).join('') || '<p class="muted">Sem quiz disponível no momento.</p>';
-      quizResposta = perguntasQuiz.reduce((acc, q, i) => { acc[i] = Number(q.resposta || 0); return acc; }, {});
-
       el('dicasEconomia').innerHTML = dicasEconomia.map(d =>
         `<li><strong>${d.titulo || 'Dica'}</strong><br>${d.mensagem || ''}</li>`
       ).join('') || '<li>Sem dicas cadastradas para hoje.</li>';
@@ -409,22 +371,6 @@
       };
       renderPainel(fallback);
     }
-
-    window.responderQuiz = function(perguntaIdx, indice) {
-      const fb = el(`quizFeedback-${perguntaIdx}`);
-      if (!fb) return;
-      fb.textContent = Number(indice) === Number(quizResposta[perguntaIdx]) ? '✅ Resposta correta!' : '❌ Tente novamente.';
-    };
-
-    window.abrirQuiz = function(perguntaIdx) {
-      const opcoes = el(`quizOpcoes-${perguntaIdx}`);
-      const botao = el(`quizAbrir-${perguntaIdx}`);
-      if (!opcoes || !botao) return;
-      const aberto = opcoes.style.display === 'grid';
-      opcoes.style.display = aberto ? 'none' : 'grid';
-      botao.textContent = aberto ? '📝 Abrir opções de resposta' : '🔼 Ocultar opções de resposta';
-      botao.setAttribute('aria-expanded', aberto ? 'false' : 'true');
-    };
 
     el('btnSair')?.addEventListener('click', () => {
       try { localStorage.removeItem(SESSION_KEY); } catch (_) {}
