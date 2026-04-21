@@ -314,7 +314,8 @@
         location.replace('index.html');
         return;
       }
-      el('sessao')?.textContent = 'Você não tem permissão para acessar o painel do coordenador. Entre com uma conta de coordenador, admin ou padre.';
+      const aviso = el('sessao');
+      if (aviso) aviso.textContent = 'Você não tem permissão para acessar o painel do coordenador. Entre com uma conta de coordenador, admin ou padre.';
     });
 
     el('loginForm').addEventListener('submit', async (ev) => {

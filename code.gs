@@ -152,7 +152,11 @@ function doGet(e) {
     }
   } catch (err) {
     resultado = { erro: err.message };
-    registrarLog('ERRO GET', action, err.message);
+    // Falha de autenticação/autorização é um 4xx esperado – registra com
+    // severidade reduzida ("AUTH") para não poluir o log de erros reais.
+    var tipoLog = /não autorizado|Acesso negado|Usuário inativo|não autenticado|identificar o e-mail|Token de autenticação/i.test(String(err.message || ''))
+      ? 'AUTH GET' : 'ERRO GET';
+    registrarLog(tipoLog, action, err.message);
   } finally {
     _limparContexto();
   }
@@ -217,7 +221,9 @@ function doPost(e) {
     }
   } catch (err) {
     resultado = { erro: err.message };
-    registrarLog('ERRO POST', action, err.message);
+    var tipoLog = /não autorizado|Acesso negado|Usuário inativo|não autenticado|identificar o e-mail|Token de autenticação/i.test(String(err.message || ''))
+      ? 'AUTH POST' : 'ERRO POST';
+    registrarLog(tipoLog, action, err.message);
   } finally {
     _limparContexto();
   }
