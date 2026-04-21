@@ -49,9 +49,15 @@ const PROGRESSO_MANUTENCAO_PADRAO = {
 const ACOES_PERMITIDAS_FIEL = ['getSessaoUsuario', 'getFielPainel', 'getTransparenciaPublica'];
 const ACOES_PUBLICAS = ['getTransparenciaPublica', 'getParoquiasFiel', 'getFielPainelPublico', 'loginFiel', 'loginUnificado'];
 
-/* ── Token de segurança (não comite segredos reais neste arquivo) ──
-   Valor real deve ser definido em Script Properties (chave: AUTH_TOKEN).
-   O fallback abaixo é usado apenas se a propriedade não existir. */
+/* ── Token de segurança ──────────────────────────────────────
+   IMPORTANTE: o valor real deve ser configurado em
+   Arquivo → Propriedades do projeto → Propriedades do script,
+   com a chave `AUTH_TOKEN`. O fallback abaixo existe apenas para
+   que a PWA funcione out-of-the-box enquanto o administrador
+   ainda não criou a propriedade; ao definir a propriedade no
+   Apps Script, ela passa a ter precedência sobre este valor.
+   Substitua o fallback por uma string vazia em produção para
+   evitar qualquer cópia do token no código-fonte. */
 const AUTH_TOKEN_FALLBACK = 'dogmn8w6@2026ceara38918010';
 function _tokenEsperado_() {
   try {
@@ -107,7 +113,12 @@ function doGet(e) {
   let resultado;
 
   try {
-    // Validação do auth_token para todas as ações (exceto as 100% públicas de leitura pública)
+    // Todas as requisições devem trazer um auth_token válido. A única
+    // exceção é `getTransparenciaPublica`, que é intencionalmente aberta
+    // (prestação pública de contas – cân. 1287 §2). As demais ações em
+    // ACOES_PUBLICAS (login, listar paróquias, painel do fiel) também
+    // exigem token: são públicas quanto a *perfil* (não precisam de
+    // usuário logado), mas continuam atrás da verificação de token.
     if (!_validarToken_(e, e.parameter) && action !== 'getTransparenciaPublica') {
       return resposta({ erro: 'Token de autenticação inválido ou ausente.' });
     }
