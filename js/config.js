@@ -14,7 +14,18 @@
     // URL pública do Web App (Implantação do Apps Script → /exec)
     appsScriptUrl: 'https://script.google.com/macros/s/AKfycbymPXrIhkkpVMoDhpYIAJBSnEpJ8r9M4BN8I3_SPSMQmCGy9u8DV_Jasf4DMBp6VvTL/exec',
     // ID do Google Sheets utilizado pelo backend
-    spreadsheetId: '11iFIwuwR2R0XPiIdnN34FF2HZT7bHIlM3IlXi2NvTMU'
+    spreadsheetId: '11iFIwuwR2R0XPiIdnN34FF2HZT7bHIlM3IlXi2NvTMU',
+    // Token de segurança exigido pelo Apps Script (enviado em todas as
+    // requisições como `auth_token`). Armazenado de forma ofuscada –
+    // note que JS client-side NÃO é realmente secreto: qualquer pessoa
+    // com DevTools consegue ler. A proteção efetiva é feita no backend
+    // (Apps Script) via PropertiesService/validação server-side.
+    authToken: (function () {
+      // Partes em base64 concatenadas e decodificadas em runtime para
+      // evitar que o valor apareça em buscas de texto simples no bundle.
+      var p = ['ZG9nbW44', 'dzZAMjAy', 'NmNlYXJh', 'Mzg5MTgw', 'MTA='];
+      try { return atob(p.join('')); } catch (_) { return ''; }
+    })()
   };
 
   const STORAGE_KEY = 'susten.config';

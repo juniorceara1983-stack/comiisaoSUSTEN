@@ -6,6 +6,27 @@ const API = (() => {
   // URL resolvida dinamicamente a cada requisição, permitindo alteração
   // na página de Configurações sem exigir reload da PWA.
   const _baseUrl = () => (window.SUSTEN_CONFIG && window.SUSTEN_CONFIG.appsScriptUrl) || '';
+  const _authToken = () => (window.SUSTEN_CONFIG && window.SUSTEN_CONFIG.authToken) || '';
+
+  // Recupera o e-mail da sessão local (definido após login unificado)
+  const _sessaoEmail = () => {
+    try {
+      const raw = localStorage.getItem('susten_sessao');
+      if (!raw) return '';
+      const s = JSON.parse(raw);
+      return (s && s.email) ? String(s.email) : '';
+    } catch (_) { return ''; }
+  };
+
+  const _montarPayload = (payload) => {
+    const base = Object.assign({}, payload || {});
+    if (!base.auth_token) base.auth_token = _authToken();
+    if (!base.email) {
+      const em = _sessaoEmail();
+      if (em) base.email = em;
+    }
+    return base;
+  };
 
   const _fetch = async (action, payload = {}) => {
     const BASE_URL = _baseUrl();
@@ -14,8 +35,9 @@ const API = (() => {
       return null;
     }
     try {
-      const params = new URLSearchParams({ action, ...payload });
-      const res = await fetch(`${BASE_URL}?${params}`, { method: 'GET' });
+      const merged = _montarPayload(payload);
+      const params = new URLSearchParams({ action, ...merged });
+      const res = await fetch(`${BASE_URL}?${params}`, { method: 'GET', redirect: 'follow' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.json();
     } catch (err) {
@@ -31,10 +53,15 @@ const API = (() => {
       return null;
     }
     try {
+      const merged = _montarPayload(body);
+      // Content-Type text/plain evita preflight CORS (Apps Script não
+      // suporta OPTIONS). O corpo continua sendo JSON – `e.postData.contents`
+      // no Apps Script é lido como string e parseado com JSON.parse().
       const res = await fetch(BASE_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, ...body })
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action, ...merged })
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.json();
@@ -119,6 +146,7 @@ const API = (() => {
   const addRecado = (data) => _post('addRecado', data);
   const getParoquiasFiel = () => _fetch('getParoquiasFiel');
   const loginFiel = (data) => _post('loginFiel', data);
+  const loginUnificado = (data) => _post('loginUnificado', data);
   const getFielPainelPublico = (payload) => _fetch('getFielPainelPublico', payload);
 
   return {
@@ -136,7 +164,7 @@ const API = (() => {
     getInventario, addInventario, updateInventario, deleteInventario,
     getPrestacaoContas, publicarBalancete, getTransparenciaPublica,
     getFielPainel, getRecados, addRecado,
-    getParoquiasFiel, loginFiel, getFielPainelPublico
+    getParoquiasFiel, loginFiel, loginUnificado, getFielPainelPublico
   };
 })();
 

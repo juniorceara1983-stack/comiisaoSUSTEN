@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#6c3fc5" />
+  <title>SUSTEN | Entrar</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f4f6f8; --card: #fff; --text: #1f2933; --muted: #6b7785;
+      --border: rgba(15,23,42,.12); --primary: #6c3fc5; --accent: #7bc8b7;
+      --err: #c0392b; --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font-family: 'Inter', sans-serif; background: linear-gradient(135deg,#6c3fc5 0%,#2f6f7e 100%);
+      color: var(--text); display: flex; align-items: center; justify-content: center; padding: 16px;
+    }
+    .card {
+      background: var(--card); border-radius: var(--radius); padding: 24px;
+      width: 100%; max-width: 420px; box-shadow: 0 20px 45px rgba(0,0,0,.25);
+    }
+    .brand { text-align: center; margin-bottom: 18px; }
+    .brand .logo { font-size: 2rem; }
+    .brand h1 { margin: 4px 0 0; font-size: 1.3rem; color: var(--primary); }
+    .brand p { margin: 4px 0 0; color: var(--muted); font-size: .9rem; }
+    form { display: grid; gap: 10px; margin-top: 12px; }
+    label { font-size: .82rem; color: var(--muted); margin-bottom: -6px; }
+    input, select, button {
+      font: inherit; border-radius: 10px; padding: 10px 12px;
+      border: 1px solid var(--border); width: 100%;
+    }
+    button {
+      background: var(--primary); color: #fff; border: none; cursor: pointer;
+      font-weight: 700; padding: 12px; margin-top: 4px;
+    }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    .msg { font-size: .85rem; min-height: 1.1em; margin-top: 4px; }
+    .msg.err { color: var(--err); }
+    .msg.ok { color: #1e7a3f; }
+    .hint { font-size: .78rem; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <div class="logo">✝️</div>
+      <h1>SUSTEN</h1>
+      <p>Entrar no portal paroquial</p>
+    </div>
+
+    <form id="form-login" autocomplete="on" novalidate>
+      <label for="f-nome">Nome completo</label>
+      <input id="f-nome" type="text" placeholder="Seu nome" autocomplete="name" required />
+
+      <label for="f-email">E-mail</label>
+      <input id="f-email" type="email" placeholder="voce@exemplo.com" autocomplete="email" required />
+
+      <label for="f-telefone">Telefone (WhatsApp)</label>
+      <input id="f-telefone" type="tel" placeholder="(00) 00000-0000" autocomplete="tel" inputmode="tel" required />
+
+      <label for="f-paroquia">Paróquia</label>
+      <select id="f-paroquia" required>
+        <option value="">Carregando…</option>
+      </select>
+
+      <div id="box-dizimista">
+        <label for="f-dizimista">É dizimista?</label>
+        <select id="f-dizimista">
+          <option value="">Selecione</option>
+          <option value="sim">Sim</option>
+          <option value="não">Não</option>
+        </select>
+      </div>
+
+      <button id="btn-entrar" type="submit">Entrar</button>
+      <div class="msg" id="msg" role="status" aria-live="polite"></div>
+      <p class="hint">
+        Fiéis entram normalmente. Coordenadores: no <strong>primeiro</strong> acesso
+        adicione <code>dizimo@admin</code> (ou <code>dizimo@cooder</code>) ao final do
+        seu nome para validar o e-mail. Nos próximos logins, basta digitar seu nome normalmente.
+      </p>
+    </form>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script>
+    (function () {
+      'use strict';
+      const el = id => document.getElementById(id);
+      const SESSION_KEY = 'susten_sessao';
+
+      // Se já houver sessão válida, redireciona direto.
+      try {
+        const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+        if (s && s.email && s.perfil) {
+          location.replace(s.perfil === 'fiel' ? 'Fiel.html' : 'index.html');
+          return;
+        }
+      } catch (_) {}
+
+      function setMsg(texto, tipo) {
+        const m = el('msg');
+        m.textContent = texto || '';
+        m.className = 'msg' + (tipo ? ' ' + tipo : '');
+      }
+
+      async function carregarParoquias() {
+        const dados = await API.getParoquiasFiel();
+        const paroquias = (dados && dados.ok && Array.isArray(dados.paroquias) && dados.paroquias.length)
+          ? dados.paroquias
+          : [{ id: 'paroquia-geral', nome: 'Paróquia Geral' }];
+        el('f-paroquia').innerHTML = '<option value="">Selecione a paróquia</option>' +
+          paroquias.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+      }
+
+      el('form-login').addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        setMsg('');
+        const nome = el('f-nome').value.trim();
+        const email = el('f-email').value.trim().toLowerCase();
+        const telefone = el('f-telefone').value.trim();
+        const paroquia_id = el('f-paroquia').value;
+        const dizimista = el('f-dizimista').value;
+
+        if (!nome || !email || !telefone || !paroquia_id) {
+          setMsg('Preencha nome, e-mail, telefone e paróquia.', 'err');
+          return;
+        }
+
+        const btn = el('btn-entrar');
+        btn.disabled = true;
+        btn.textContent = 'Entrando…';
+        try {
+          const resp = await API.loginUnificado({
+            nome: nome,
+            email: email,
+            telefone: telefone,
+            paroquia_id: paroquia_id,
+            dizimista: dizimista
+          });
+          if (!resp) {
+            setMsg('Falha de conexão com o servidor. Verifique sua internet e tente novamente.', 'err');
+            return;
+          }
+          if (!resp.ok) {
+            setMsg(resp.erro || 'Não foi possível entrar.', 'err');
+            return;
+          }
+
+          const sessao = {
+            email: resp.email || email,
+            nome: resp.nome || nome,
+            perfil: resp.perfil || 'fiel',
+            paroquia_id: resp.paroquia_id || paroquia_id,
+            telefone: resp.telefone || telefone,
+            criadoEm: new Date().toISOString()
+          };
+          localStorage.setItem(SESSION_KEY, JSON.stringify(sessao));
+
+          // Compat: manter chave antiga usada pelo Fiel.html
+          if (sessao.perfil === 'fiel') {
+            localStorage.setItem('susten_fiel_auth', JSON.stringify({
+              login: sessao.nome,
+              senha: (resp.fiel && resp.fiel.telefone) || telefone.replace(/\D/g, ''),
+              paroquia_id: sessao.paroquia_id
+            }));
+          }
+
+          setMsg('Bem-vindo(a)!', 'ok');
+          setTimeout(() => {
+            location.replace(sessao.perfil === 'fiel' ? 'Fiel.html' : 'index.html');
+          }, 300);
+        } catch (err) {
+          console.error(err);
+          setMsg('Erro inesperado: ' + (err && err.message ? err.message : err), 'err');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Entrar';
+        }
+      });
+
+      carregarParoquias();
+    })();
+  </script>
+</body>
+</html>

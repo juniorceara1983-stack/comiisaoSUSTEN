@@ -28,6 +28,26 @@
 </head>
 <body>
 
+<!-- ═══════════════════ GUARDA DE SESSÃO ═════════════════════ -->
+<script>
+  (function () {
+    try {
+      var raw = localStorage.getItem('susten_sessao');
+      var s = raw ? JSON.parse(raw) : null;
+      if (!s || !s.email || !s.perfil) {
+        location.replace('login.html');
+        return;
+      }
+      if (s.perfil === 'fiel') {
+        location.replace('Fiel.html');
+        return;
+      }
+    } catch (_) {
+      location.replace('login.html');
+    }
+  })();
+</script>
+
 <!-- ═══════════════════ LOADING SCREEN ═══════════════════════ -->
 <div id="loading-screen">
   <div class="loading-logo">✝️</div>
@@ -108,11 +128,15 @@
 
     <div class="sidebar-footer">
       <div class="sidebar-user">
-        <div class="user-avatar">A</div>
-        <div>
-          <div class="user-name">Administrador</div>
-          <div class="user-role">Coordenador</div>
+        <div class="user-avatar" id="sidebar-user-avatar">A</div>
+        <div style="flex:1;min-width:0">
+          <div class="user-name" id="sidebar-user-name">Administrador</div>
+          <div class="user-role" id="sidebar-user-role">Coordenador</div>
         </div>
+        <button id="btn-logout" type="button" title="Sair" aria-label="Sair"
+                style="background:transparent;border:none;color:inherit;cursor:pointer;font-size:1.2rem;padding:6px">
+          ⎋
+        </button>
       </div>
     </div>
   </aside>
@@ -1578,5 +1602,27 @@
 <script src="js/api.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/app.js"></script>
+<script>
+  // Popula dados do usuário na sidebar + handler de logout
+  (function () {
+    try {
+      var s = JSON.parse(localStorage.getItem('susten_sessao') || 'null');
+      if (s) {
+        var nomeEl = document.getElementById('sidebar-user-name');
+        var roleEl = document.getElementById('sidebar-user-role');
+        var avEl = document.getElementById('sidebar-user-avatar');
+        if (nomeEl && s.nome) nomeEl.textContent = s.nome;
+        if (roleEl && s.perfil) roleEl.textContent = s.perfil.charAt(0).toUpperCase() + s.perfil.slice(1);
+        if (avEl && s.nome) avEl.textContent = String(s.nome).trim().charAt(0).toUpperCase();
+      }
+    } catch (_) {}
+    var btn = document.getElementById('btn-logout');
+    if (btn) btn.addEventListener('click', function () {
+      try { localStorage.removeItem('susten_sessao'); } catch (_) {}
+      try { localStorage.removeItem('susten_fiel_auth'); } catch (_) {}
+      location.replace('login.html');
+    });
+  })();
+</script>
 </body>
 </html>

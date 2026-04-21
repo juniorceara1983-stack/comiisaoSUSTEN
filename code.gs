@@ -47,7 +47,36 @@ const PROGRESSO_MANUTENCAO_PADRAO = {
   planejada: 35
 };
 const ACOES_PERMITIDAS_FIEL = ['getSessaoUsuario', 'getFielPainel', 'getTransparenciaPublica'];
-const ACOES_PUBLICAS = ['getTransparenciaPublica', 'getParoquiasFiel', 'getFielPainelPublico', 'loginFiel'];
+const ACOES_PUBLICAS = ['getTransparenciaPublica', 'getParoquiasFiel', 'getFielPainelPublico', 'loginFiel', 'loginUnificado'];
+
+/* ── Token de segurança ──────────────────────────────────────
+   IMPORTANTE: o valor real deve ser configurado em
+   Arquivo → Propriedades do projeto → Propriedades do script,
+   com a chave `AUTH_TOKEN`. O fallback abaixo existe apenas para
+   que a PWA funcione out-of-the-box enquanto o administrador
+   ainda não criou a propriedade; ao definir a propriedade no
+   Apps Script, ela passa a ter precedência sobre este valor.
+   Substitua o fallback por uma string vazia em produção para
+   evitar qualquer cópia do token no código-fonte. */
+const AUTH_TOKEN_FALLBACK = 'dogmn8w6@2026ceara38918010';
+function _tokenEsperado_() {
+  try {
+    var p = PropertiesService.getScriptProperties().getProperty('AUTH_TOKEN');
+    if (p) return String(p);
+  } catch (_) {}
+  return AUTH_TOKEN_FALLBACK;
+}
+function _extrairToken_(e, payload) {
+  var t = '';
+  try {
+    if (payload && payload.auth_token) t = String(payload.auth_token);
+    if (!t && e && e.parameter && e.parameter.auth_token) t = String(e.parameter.auth_token);
+  } catch (_) {}
+  return t;
+}
+function _validarToken_(e, payload) {
+  return _extrairToken_(e, payload) === _tokenEsperado_();
+}
 const CATEGORIA_DIZIMISTA = 'Dizimista';
 const CATEGORIA_NAO_DIZIMISTA = 'Não Dizimista';
 const MS_POR_DIA = 86400000;
@@ -84,6 +113,15 @@ function doGet(e) {
   let resultado;
 
   try {
+    // Todas as requisições devem trazer um auth_token válido. A única
+    // exceção é `getTransparenciaPublica`, que é intencionalmente aberta
+    // (prestação pública de contas – cân. 1287 §2). As demais ações em
+    // ACOES_PUBLICAS (login, listar paróquias, painel do fiel) também
+    // exigem token: são públicas quanto a *perfil* (não precisam de
+    // usuário logado), mas continuam atrás da verificação de token.
+    if (!_validarToken_(e, e.parameter) && action !== 'getTransparenciaPublica') {
+      return resposta({ erro: 'Token de autenticação inválido ou ausente.' });
+    }
     _prepararContexto('GET', action, e.parameter || {});
     switch (action) {
       case 'getSessaoUsuario': resultado = getSessaoUsuario(); break;
@@ -131,6 +169,9 @@ function doPost(e) {
   let resultado;
 
   try {
+    if (!_validarToken_(e, payload)) {
+      return resposta({ erro: 'Token de autenticação inválido ou ausente.' });
+    }
     _prepararContexto('POST', action, payload || {});
     switch (action) {
       case 'addLancamento':     resultado = addLancamento(payload);    break;
@@ -170,6 +211,7 @@ function doPost(e) {
       case 'publicarBalancete': resultado = publicarBalancete(payload); break;
       case 'addRecado': resultado = addRecado(payload); break;
       case 'loginFiel': resultado = loginFiel(payload); break;
+      case 'loginUnificado': resultado = loginUnificado(payload); break;
       default:
         resultado = { erro: 'Ação desconhecida: ' + action };
     }
@@ -222,10 +264,17 @@ function _emailLogado() {
   return '';
 }
 
+function _emailDoPayload(payload) {
+  if (!payload) return '';
+  var e = payload.email || payload.user_email || '';
+  return String(e || '').trim().toLowerCase();
+}
+
 function _resolverContextoUsuario(payload) {
-  const headersUsuarios = ['id','email','nome','paroquia_id','perfil','ativo'];
+  const headersUsuarios = ['id','email','nome','paroquia_id','perfil','ativo','telefone'];
   _garantirCabecalho(SHEETS.USUARIOS, headersUsuarios);
-  const email = _emailLogado();
+  // 1) tenta o e-mail do Google; 2) aceita e-mail do payload (sessão do PWA)
+  let email = _emailLogado() || _emailDoPayload(payload);
   if (!email) return { ok: false, erro: 'Não foi possível identificar o e-mail do usuário.' };
 
   const usuarios = _lerAbaSemFiltro(SHEETS.USUARIOS);
@@ -749,6 +798,103 @@ function loginFiel(payload) {
       categoria: membro.categoria,
       dizimista: _ehCategoriaDizimista(membro.categoria)
     }
+  };
+}
+
+/* ── Login Unificado (Fiel ou Coordenador) ─────────────────────
+   Aceita sufixo mágico no nome para promover a coordenador na 1ª vez:
+     "Junior Chaves dizimo@admin"  ou  "...dizimo@cooder"
+   Após o primeiro login de coordenador, o e-mail fica registrado na
+   aba Usuários e nos logins seguintes basta Nome + E-mail + Telefone. */
+const SUFIXO_COORDENADOR_RE = /\s*dizimo@(admin|cooder)\s*$/i;
+
+function loginUnificado(payload) {
+  const headersUsuarios = ['id','email','nome','paroquia_id','perfil','ativo','telefone'];
+  _garantirCabecalho(SHEETS.USUARIOS, headersUsuarios);
+  _garantirCabecalho(SHEETS.MEMBROS,
+    ['id','nome','telefone','categoria','status','ultimoDizimo','valor','paroquia_id']);
+
+  const nomeBruto = String(payload.login || payload.nome || '').trim();
+  const email = String(payload.email || '').trim().toLowerCase();
+  const telefone = _normalizarWhatsApp55(payload.senha || payload.whatsapp || payload.telefone || '');
+  const paroquia_id = String(payload.paroquia_id || '').trim();
+  const dizimista = _normalizarTextoBasico(payload.dizimista || '');
+
+  if (!nomeBruto) return { ok: false, erro: 'Informe o nome.' };
+  if (!email || email.indexOf('@') === -1) return { ok: false, erro: 'Informe um e-mail válido.' };
+  if (!telefone || !telefone.startsWith('55')) return { ok: false, erro: 'Informe um número de WhatsApp válido.' };
+
+  const temSufixoCoord = SUFIXO_COORDENADOR_RE.test(nomeBruto);
+  const nome = nomeBruto.replace(SUFIXO_COORDENADOR_RE, '').trim();
+
+  const usuarios = _lerAbaSemFiltro(SHEETS.USUARIOS);
+  const usuarioExistente = usuarios.find(u => String(u.email || '').trim().toLowerCase() === email);
+
+  // 1) Já existe usuário (coordenador/admin) registrado com este e-mail
+  if (usuarioExistente) {
+    const perfil = String(usuarioExistente.perfil || 'fiel').toLowerCase();
+    if (String(usuarioExistente.ativo || 'true').toLowerCase() === 'false') {
+      return { ok: false, erro: 'Usuário inativo.' };
+    }
+    if (perfil === 'coordenador' || perfil === 'admin' || perfil === 'padre') {
+      // Atualiza telefone/paroquia_id caso tenham mudado
+      const atualizado = Object.assign({}, usuarioExistente, {
+        nome: nome || usuarioExistente.nome,
+        telefone: telefone,
+        paroquia_id: paroquia_id || usuarioExistente.paroquia_id
+      });
+      _atualizarPorId(SHEETS.USUARIOS, atualizado);
+      registrarLog('LOGIN', 'Coordenador', `email=${email}`);
+      return {
+        ok: true,
+        perfil: perfil,
+        email: email,
+        nome: atualizado.nome,
+        paroquia_id: atualizado.paroquia_id,
+        telefone: telefone
+      };
+    }
+    // Perfil fiel já existente via Usuários – trata como fiel mesmo assim
+  }
+
+  // 2) Primeiro login com sufixo mágico → cria coordenador
+  if (temSufixoCoord) {
+    if (!paroquia_id) return { ok: false, erro: 'Selecione a paróquia para cadastrar o coordenador.' };
+    const id = Date.now();
+    const sh = SH(SHEETS.USUARIOS);
+    sh.appendRow([id, email, nome, paroquia_id, 'coordenador', 'true', telefone]);
+    registrarLog('ADD', 'Coordenador', `id=${id} email=${email} paroquia=${paroquia_id}`);
+    return {
+      ok: true,
+      perfil: 'coordenador',
+      email: email,
+      nome: nome,
+      paroquia_id: paroquia_id,
+      telefone: telefone,
+      primeiro_acesso: true
+    };
+  }
+
+  // 3) Caso contrário, fluxo de Fiel (cadastra/valida em Membros)
+  if (!paroquia_id) return { ok: false, erro: 'Selecione a paróquia.' };
+  if (dizimista !== 'sim' && dizimista !== 'nao') return { ok: false, erro: 'Selecione se é dizimista.' };
+
+  const resFiel = loginFiel({
+    login: nome,
+    senha: telefone,
+    paroquia_id: paroquia_id,
+    dizimista: dizimista
+  });
+  if (!resFiel || !resFiel.ok) return resFiel || { ok: false, erro: 'Falha ao autenticar fiel.' };
+
+  return {
+    ok: true,
+    perfil: 'fiel',
+    email: email,
+    nome: nome,
+    paroquia_id: paroquia_id,
+    telefone: telefone,
+    fiel: resFiel.fiel || null
   };
 }
 
