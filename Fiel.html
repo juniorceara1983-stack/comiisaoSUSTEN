@@ -236,7 +236,8 @@
       el('quizDoDia').innerHTML = perguntasQuiz.map((q, qIdx) => `
         <div class="card" style="margin:0 0 10px 0;padding:14px">
           <p><strong>${qIdx + 1}. ${q.pergunta || 'Pergunta'}</strong> <span class="muted">${q.tema ? `• ${q.tema}` : ''}</span></p>
-          <div class="quiz-options">
+          <button type="button" class="action-btn" id="quizAbrir-${qIdx}" onclick="abrirQuiz(${qIdx})">📝 Abrir opções de resposta</button>
+          <div class="quiz-options" id="quizOpcoes-${qIdx}" style="display:none">
             ${(Array.isArray(q.opcoes) ? q.opcoes : []).map((op, idx) => `<button type="button" onclick="responderQuiz(${qIdx},${idx})">${op}</button>`).join('')}
           </div>
           <p class="muted" id="quizFeedback-${qIdx}"></p>
@@ -330,6 +331,15 @@
       const fb = el(`quizFeedback-${perguntaIdx}`);
       if (!fb) return;
       fb.textContent = Number(indice) === Number(quizResposta[perguntaIdx]) ? '✅ Resposta correta!' : '❌ Tente novamente.';
+    };
+
+    window.abrirQuiz = function(perguntaIdx) {
+      const opcoes = el(`quizOpcoes-${perguntaIdx}`);
+      const botao = el(`quizAbrir-${perguntaIdx}`);
+      if (!opcoes || !botao) return;
+      const aberto = opcoes.style.display === 'grid';
+      opcoes.style.display = aberto ? 'none' : 'grid';
+      botao.textContent = aberto ? '📝 Abrir opções de resposta' : '🔼 Ocultar opções de resposta';
     };
 
     el('btnSair')?.addEventListener('click', () => {

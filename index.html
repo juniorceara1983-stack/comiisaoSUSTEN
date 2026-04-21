@@ -998,7 +998,6 @@
           <p>• Os arquivos CSV são exportados com codificação UTF-8 e separador ponto-e-vírgula (compatível com Excel brasileiro).</p>
           <p>• Para abrir no Google Sheets: <em>Arquivo → Importar → selecionar arquivo → Separador: ponto e vírgula</em>.</p>
           <p>• Os dados exportados refletem o estado atual do sistema, incluindo alterações não salvas no servidor.</p>
-          <p>• Para relatórios de auditoria completos, configure a integração com o Google Apps Script.</p>
         </div>
       </div>
     </section>
@@ -1067,29 +1066,6 @@
         </div>
 
         <div>
-          <!-- Integração Apps Script -->
-          <div class="settings-section">
-            <div class="settings-title">🔗 Integração Google Apps Script</div>
-            <div class="card">
-              <div style="background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.3);border-radius:var(--radius-sm);padding:0.9rem;margin-bottom:1rem;font-size:0.82rem;color:var(--text-secondary)">
-                ℹ️ Para ativar a sincronização com Google Sheets, publique o <code>code.gs</code> como Web App e cole a URL abaixo.
-              </div>
-              <div class="form-group">
-                <label class="form-label">URL do Web App (Apps Script)</label>
-                <input type="url" class="form-control" id="cfg-apps-script-url" placeholder="https://script.google.com/macros/s/…/exec" />
-              </div>
-              <div class="divider"></div>
-              <div style="font-size:0.8rem;color:var(--text-muted);line-height:1.7">
-                <strong style="color:var(--text-secondary)">Passos para configurar:</strong><br>
-                1. Abra o Google Sheets e vá em <em>Extensões → Apps Script</em><br>
-                2. Cole o conteúdo do arquivo <code>code.gs</code><br>
-                3. Clique em <em>Implantar → Novo Implantação → Web App</em><br>
-                4. Defina acesso como <em>"Qualquer pessoa"</em> (público) ou <em>"Usuários da organização"</em><br>
-                5. Copie a URL gerada e cole acima
-              </div>
-            </div>
-          </div>
-
           <!-- Preferências do Sistema -->
           <div class="settings-section">
             <div class="settings-title">🎨 Preferências do Sistema</div>

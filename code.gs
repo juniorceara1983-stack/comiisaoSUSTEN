@@ -714,13 +714,42 @@ function _listarParoquiasFiel() {
   _garantirCabecalho(SHEETS.MEMBROS,
     ['id','nome','telefone','categoria','status','ultimoDizimo','valor','paroquia_id']);
   const membros = _lerAbaSemFiltro(SHEETS.MEMBROS);
-  const ids = {};
+  const paroquias = {};
+  const registrar = (id, nome) => {
+    const pid = String(id || '').trim();
+    if (!pid) return;
+    if (!paroquias[pid]) paroquias[pid] = { id: pid, nome: String(nome || '').trim() || pid };
+    const nomeAtual = String(paroquias[pid].nome || '').trim();
+    const novoNome = String(nome || '').trim();
+    if ((!nomeAtual || nomeAtual === pid) && novoNome) paroquias[pid].nome = novoNome;
+  };
+
   membros.forEach(m => {
-    const id = String(m.paroquia_id || '').trim();
-    if (!id) return;
-    ids[id] = true;
+    registrar(m.paroquia_id, '');
   });
-  return Object.keys(ids).map(id => ({ id: id, nome: id }));
+
+  _garantirCabecalho(SHEETS.USUARIOS, ['id','email','nome','paroquia_id','perfil','ativo','telefone']);
+  const usuarios = _lerAbaSemFiltro(SHEETS.USUARIOS);
+  usuarios.forEach(u => {
+    registrar(u.paroquia_id, '');
+  });
+
+  const cfgRows = SH(SHEETS.CONFIG).getDataRange().getValues();
+  const cfgV2 = cfgRows.length > 0 &&
+    String(cfgRows[0][0]).toLowerCase() === 'paroquia_id' &&
+    String(cfgRows[0][1]).toLowerCase() === 'chave';
+  if (cfgV2) {
+    for (let i = 1; i < cfgRows.length; i++) {
+      const paroquiaId = cfgRows[i][0];
+      const chave = String(cfgRows[i][1] || '').trim().toLowerCase();
+      const valor = cfgRows[i][2];
+      if (chave === 'nome') registrar(paroquiaId, valor);
+    }
+  }
+
+  return Object.keys(paroquias)
+    .map(k => paroquias[k])
+    .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
 }
 
 function getParoquiasFiel() {
