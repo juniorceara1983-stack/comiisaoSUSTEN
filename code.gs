@@ -84,6 +84,8 @@ const MS_POR_DIA = 86400000;
 const QUIZ_DIARIO_TOTAL = 10;
 const QUIZ_BANCO_TOTAL = 300;
 const _CABECALHO_QUIZ = ['id','pergunta','opcao_a','opcao_b','opcao_c','opcao_d','resposta','tema','ativo'];
+const URL_LITURGIA_DIARIA = 'https://liturgia.cancaonova.com/pb/';
+const URL_SANTO_DO_DIA = 'https://santo.cancaonova.com/';
 
 /* ── Acesso à planilha ativa ──────────────────────────────── */
 /**
@@ -268,7 +270,7 @@ function _emailLogado() {
   try {
     const active = Session.getActiveUser().getEmail();
     if (active) return String(active).trim().toLowerCase();
-  } catch (_) {}
+  } catch (_) { /* acesso pode falhar para usuários anônimos do Web App */ }
   return '';
 }
 
@@ -1034,16 +1036,16 @@ function _conteudoPastoralDiario(paroquiaId) {
   const diaAno = Math.floor((data.getTime() - inicioAno.getTime()) / MS_POR_DIA) + 1;
 
   const liturgias = [
-    { referencia: 'Jo 13,34', titulo: 'Mandamento do Amor', mensagem: 'Amai-vos uns aos outros como eu vos amei.', link: 'https://liturgia.cancaonova.com/pb/' },
-    { referencia: 'Mt 5,9', titulo: 'Bem-aventurados os pacificadores', mensagem: 'Promova reconciliação e paz em sua casa e comunidade.', link: 'https://liturgia.cancaonova.com/pb/' },
-    { referencia: 'Lc 1,38', titulo: 'Eis aqui a serva do Senhor', mensagem: 'Disponha seu coração para servir com fé e generosidade.', link: 'https://liturgia.cancaonova.com/pb/' },
-    { referencia: 'Sl 23', titulo: 'O Senhor é meu pastor', mensagem: 'Confie no cuidado de Deus para cada necessidade.', link: 'https://liturgia.cancaonova.com/pb/' }
+    { referencia: 'Jo 13,34', titulo: 'Mandamento do Amor', mensagem: 'Amai-vos uns aos outros como eu vos amei.', link: URL_LITURGIA_DIARIA },
+    { referencia: 'Mt 5,9', titulo: 'Bem-aventurados os pacificadores', mensagem: 'Promova reconciliação e paz em sua casa e comunidade.', link: URL_LITURGIA_DIARIA },
+    { referencia: 'Lc 1,38', titulo: 'Eis aqui a serva do Senhor', mensagem: 'Disponha seu coração para servir com fé e generosidade.', link: URL_LITURGIA_DIARIA },
+    { referencia: 'Sl 23', titulo: 'O Senhor é meu pastor', mensagem: 'Confie no cuidado de Deus para cada necessidade.', link: URL_LITURGIA_DIARIA }
   ];
   const santos = [
-    { nome: 'São José', exemplo: 'Fidelidade e silêncio orante.', link: 'https://santo.cancaonova.com/' },
-    { nome: 'Nossa Senhora Aparecida', exemplo: 'Confiança e intercessão materna.', link: 'https://santo.cancaonova.com/' },
-    { nome: 'São Francisco de Assis', exemplo: 'Simplicidade e cuidado com os pobres.', link: 'https://santo.cancaonova.com/' },
-    { nome: 'Santa Teresinha', exemplo: 'Santidade nas pequenas atitudes diárias.', link: 'https://santo.cancaonova.com/' }
+    { nome: 'São José', exemplo: 'Fidelidade e silêncio orante.', link: URL_SANTO_DO_DIA },
+    { nome: 'Nossa Senhora Aparecida', exemplo: 'Confiança e intercessão materna.', link: URL_SANTO_DO_DIA },
+    { nome: 'São Francisco de Assis', exemplo: 'Simplicidade e cuidado com os pobres.', link: URL_SANTO_DO_DIA },
+    { nome: 'Santa Teresinha', exemplo: 'Santidade nas pequenas atitudes diárias.', link: URL_SANTO_DO_DIA }
   ];
 
   return {
