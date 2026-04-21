@@ -108,6 +108,10 @@ let CONTEXTO_USUARIO_ATUAL = null;
 /**
  * GET – Leitura de dados
  */
+function _ehErroDeAutenticacao_(msg) {
+  return /não autorizado|Acesso negado|Usuário inativo|não autenticado|identificar o e-mail|Token de autenticação/i.test(String(msg || ''));
+}
+
 function doGet(e) {
   const action = e.parameter.action || '';
   let resultado;
@@ -154,8 +158,7 @@ function doGet(e) {
     resultado = { erro: err.message };
     // Falha de autenticação/autorização é um 4xx esperado – registra com
     // severidade reduzida ("AUTH") para não poluir o log de erros reais.
-    var tipoLog = /não autorizado|Acesso negado|Usuário inativo|não autenticado|identificar o e-mail|Token de autenticação/i.test(String(err.message || ''))
-      ? 'AUTH GET' : 'ERRO GET';
+    var tipoLog = _ehErroDeAutenticacao_(err.message) ? 'AUTH GET' : 'ERRO GET';
     registrarLog(tipoLog, action, err.message);
   } finally {
     _limparContexto();
@@ -221,8 +224,7 @@ function doPost(e) {
     }
   } catch (err) {
     resultado = { erro: err.message };
-    var tipoLog = /não autorizado|Acesso negado|Usuário inativo|não autenticado|identificar o e-mail|Token de autenticação/i.test(String(err.message || ''))
-      ? 'AUTH POST' : 'ERRO POST';
+    var tipoLog = _ehErroDeAutenticacao_(err.message) ? 'AUTH POST' : 'ERRO POST';
     registrarLog(tipoLog, action, err.message);
   } finally {
     _limparContexto();

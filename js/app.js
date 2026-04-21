@@ -85,6 +85,11 @@ const normalizarTexto = (v = '') => String(v)
 
 const CATEGORIA_DIZIMISTA = 'Dizimista';
 
+/* ── Detecção de erro de autenticação vindo do backend ───────── */
+const AUTH_ERROR_RE = /não autorizado|Acesso negado|Usuário inativo|Token de autenticação/i;
+const isAuthError = (resposta) =>
+  !!(resposta && typeof resposta === 'object' && resposta.erro && AUTH_ERROR_RE.test(String(resposta.erro)));
+
 /* ── Navegação ──────────────────────────────────────────────── */
 const navigate = pageName => {
   if (State.currentPage === pageName) return;
@@ -1404,9 +1409,7 @@ const carregarDados = async () => {
   // mas não está/não está mais cadastrado na aba Usuários),
   // limpa a sessão e volta para o login em vez de seguir
   // carregando o painel com erros.
-  const naoAutorizado = respostas.some(r => r && typeof r === 'object' && r.erro
-    && /não autorizado|Acesso negado|Usuário inativo|Token de autenticação/i.test(String(r.erro)));
-  if (naoAutorizado) {
+  if (respostas.some(isAuthError)) {
     try { localStorage.removeItem('susten_sessao'); } catch (_) {}
     try { localStorage.removeItem('susten_fiel_auth'); } catch (_) {}
     toast('Sessão expirada ou usuário não autorizado. Faça login novamente.', 'warning', 4000);
