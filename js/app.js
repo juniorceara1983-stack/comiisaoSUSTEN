@@ -1572,6 +1572,11 @@ const bindEvents = () => {
   });
 
   // Topbar: botão de atualizar dados
+  $('btn-switch-to-fiel')?.addEventListener('click', () => {
+    location.replace('Fiel.html');
+  });
+
+  // Topbar: botão de atualizar dados
   $('btn-refresh')?.addEventListener('click', async () => {
     toast('Atualizando dados…', 'info', 2000);
     await carregarDados();
