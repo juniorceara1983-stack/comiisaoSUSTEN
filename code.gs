@@ -667,7 +667,8 @@ function getFielPainel() {
       pix_chave: config.pixChave || '',
       pix_nome: config.pixNome || '',
       pix_banco: config.pixBanco || '',
-      qr_code_pix: config.pixQrUrl || ''
+      qr_code_pix: config.pixQrUrl || '',
+      capelas: _parseCapelasConfig(config)
     },
     novidades: recados.slice(0, MAX_NOVIDADES_PAINEL_FIEL).map(r => ({
       id: r.id,
@@ -921,6 +922,21 @@ function loginUnificado(payload) {
     const id = Date.now();
     const sh = SH(SHEETS.USUARIOS);
     sh.appendRow([id, email, nome, paroquia_id, 'coordenador', 'true', telefone]);
+    // Se o coordenador enviou capelas no cadastro, persiste em Configurações
+    const capelasPayload = _sanitizarCapelasPayload(payload && payload.capelas);
+    if (capelasPayload.length) {
+      try {
+        _salvarConfigParaParoquia_(paroquia_id, {
+          nome: String(payload.paroquia_nome || '').trim() || undefined,
+          capelas: JSON.stringify(capelasPayload)
+        });
+      } catch (err) {
+        // não falha o login por causa disso – apenas registra
+        registrarLog('WARN', 'Capelas', String(err && err.message || err));
+      }
+    } else if (String(payload.paroquia_nome || '').trim()) {
+      try { _salvarConfigParaParoquia_(paroquia_id, { nome: String(payload.paroquia_nome).trim() }); } catch (_) {}
+    }
     registrarLog('ADD', 'Coordenador', `id=${id} email=${email} paroquia=${paroquia_id}`);
     return {
       ok: true,
@@ -1210,24 +1226,9 @@ function getFielPainelPublico(params) {
       pix_chave: config.pixChave || '',
       pix_nome: config.pixNome || '',
       pix_banco: config.pixBanco || '',
-      qr_code_pix: config.pixQrUrl || ''
+      qr_code_pix: config.pixQrUrl || '',
+      capelas: _parseCapelasConfig(config)
     },
-    dizimistas: (function () {
-      const membros = _lerAbaSemFiltro(SHEETS.MEMBROS)
-        .filter(m => String(m.paroquia_id || '').trim() === paroquiaId);
-      return membros
-        .filter(m => {
-          const cat = String(m.categoria || '').toLowerCase();
-          return cat === 'dizimista' || cat === 'colaborador';
-        })
-        .map(m => ({
-          nome: m.nome,
-          categoria: m.categoria,
-          status: m.status,
-          ultimoDizimo: m.ultimoDizimo,
-          valor: Number(m.valor || 0)
-        }));
-    })(),
     novidades: novidades,
     dicas_economia: dicasEconomia,
     mensagem_biblica_diaria: biblicaDiaria,
@@ -1851,4 +1852,84 @@ function backupSemanal() {
     registrarLog('ERRO BACKUP', 'backupSemanal', err.message);
     return { ok: false, erro: err.message };
   }
+}
+
+/* ══════════════════════════════════════════════════════════
+   CAPELAS (subentidades de uma paróquia)
+   ══════════════════════════════════════════════════════════ */
+
+/**
+ * Lê o valor `capelas` do objeto Config já resolvido para a paróquia.
+ * Pode vir como JSON (string) ou como array já parseado. Sempre retorna array.
+ */
+function _parseCapelasConfig(config) {
+  if (!config) return [];
+  const raw = config.capelas;
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.map(_normalizarCapela_).filter(Boolean);
+  try {
+    const arr = JSON.parse(String(raw));
+    if (Array.isArray(arr)) return arr.map(_normalizarCapela_).filter(Boolean);
+  } catch (_) {}
+  return [];
+}
+
+function _normalizarCapela_(obj) {
+  if (!obj) return null;
+  if (typeof obj === 'string') {
+    const nome = String(obj).trim();
+    return nome ? { nome: nome } : null;
+  }
+  const nome = String(obj.nome || '').trim();
+  if (!nome) return null;
+  return {
+    nome: nome,
+    endereco: String(obj.endereco || '').trim(),
+    responsavel: String(obj.responsavel || '').trim(),
+    horario: String(obj.horario || '').trim(),
+    info: String(obj.info || obj.observacoes || '').trim()
+  };
+}
+
+function _sanitizarCapelasPayload(capelas) {
+  if (!capelas) return [];
+  let arr = capelas;
+  if (typeof arr === 'string') {
+    try { arr = JSON.parse(arr); } catch (_) {
+      // texto simples: uma capela por linha
+      arr = String(capelas).split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(nome => ({ nome: nome }));
+    }
+  }
+  if (!Array.isArray(arr)) return [];
+  return arr.map(_normalizarCapela_).filter(Boolean);
+}
+
+/**
+ * Grava chaves/valores em Configurações para uma paróquia específica
+ * sem depender do contexto atual. Usado, p.ex., pelo fluxo de criação
+ * de paróquia em loginUnificado (quando ainda não há sessão).
+ */
+function _salvarConfigParaParoquia_(paroquiaId, data) {
+  if (!paroquiaId || !data) return { ok: false };
+  const sh = SH(SHEETS.CONFIG);
+  const rows = sh.getDataRange().getValues();
+  const hasHeaderV2 = rows.length > 0 &&
+    String(rows[0][0]).toLowerCase() === 'paroquia_id' &&
+    String(rows[0][1]).toLowerCase() === 'chave';
+  if (!hasHeaderV2) {
+    sh.clearContents();
+    sh.appendRow(['paroquia_id', 'chave', 'valor']);
+  }
+  const pid = _normalizarIdParoquia(paroquiaId);
+  const allRows = sh.getDataRange().getValues();
+  // Remove apenas as chaves que vamos atualizar, preservando as demais
+  const chavesAtualizar = Object.keys(data).filter(k => data[k] !== undefined && k !== 'action');
+  for (let i = allRows.length; i >= 2; i--) {
+    if (_normalizarIdParoquia(allRows[i - 1][0]) === pid &&
+        chavesAtualizar.indexOf(String(allRows[i - 1][1])) !== -1) {
+      sh.deleteRow(i);
+    }
+  }
+  chavesAtualizar.forEach(k => sh.appendRow([paroquiaId, k, data[k]]));
+  return { ok: true };
 }

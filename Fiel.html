@@ -120,7 +120,7 @@
 
     <section class="card" id="card-dizimo-digital">
       <h2 class="title" style="font-size:1.15rem">🙏 Dízimo Digital — Minha Oferta de Gratidão</h2>
-      <p class="muted">Contribua com sua paróquia via PIX e acompanhe dizimistas e colaboradores.</p>
+      <p class="muted">Contribua com sua paróquia via PIX ou transferência.</p>
       <div class="grid two" style="margin-top:10px">
         <div>
           <h3 style="margin:0 0 6px;font-size:0.98rem">💳 Dados PIX / Transferência</h3>
@@ -138,21 +138,17 @@
           <img id="dd-pix-qr" alt="QR Code PIX" style="width:140px;height:140px;border-radius:10px;border:1px solid var(--border);background:#fff" />
         </div>
       </div>
+    </section>
 
-      <h3 style="margin:14px 0 6px;font-size:0.98rem">Dizimistas e Colaboradores</h3>
-      <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;font-size:0.9rem">
-          <thead>
-            <tr style="background:#eef4f6">
-              <th style="text-align:left;padding:8px;border-bottom:1px solid var(--border)">Nome</th>
-              <th style="text-align:left;padding:8px;border-bottom:1px solid var(--border)">Categoria</th>
-              <th style="text-align:left;padding:8px;border-bottom:1px solid var(--border)">Status</th>
-              <th style="text-align:left;padding:8px;border-bottom:1px solid var(--border)">Último Dízimo</th>
-            </tr>
-          </thead>
-          <tbody id="dd-tbody-dizimistas"></tbody>
-        </table>
-      </div>
+    <section class="card" id="card-capelas" style="display:none">
+      <h2 class="title" style="font-size:1.05rem">⛪ Capelas da Paróquia</h2>
+      <div id="lista-capelas" class="grid"></div>
+    </section>
+
+    <section class="card" id="card-quiz-diario">
+      <h2 class="title" style="font-size:1.15rem">🧠 Quiz Diário</h2>
+      <p class="muted">10 perguntas diárias sobre Dízimo, Catecismo, Bíblia e Santos. O quiz é renovado todo dia.</p>
+      <div id="quiz-box"></div>
     </section>
 
     <section class="card">
@@ -254,22 +250,29 @@
           );
         });
       }
-      const dizimistas = Array.isArray(data.dizimistas) ? data.dizimistas : [];
-      const ddTbody = el('dd-tbody-dizimistas');
-      if (ddTbody) {
-        const fmtData = (d) => {
-          if (!d || d === '—') return '—';
-          try { return new Date(d + 'T00:00:00').toLocaleDateString('pt-BR'); } catch (_) { return d; }
-        };
-        ddTbody.innerHTML = dizimistas.length ? dizimistas.map(m => `
-          <tr>
-            <td style="padding:8px;border-bottom:1px solid var(--border)">${m.nome || ''}</td>
-            <td style="padding:8px;border-bottom:1px solid var(--border)">${m.categoria || ''}</td>
-            <td style="padding:8px;border-bottom:1px solid var(--border)"><span class="status ${String(m.status || '').toLowerCase() === 'ativo' ? 'ok' : 'warn'}">${m.status || ''}</span></td>
-            <td style="padding:8px;border-bottom:1px solid var(--border)">${fmtData(m.ultimoDizimo)}</td>
-          </tr>
-        `).join('') : '<tr><td colspan="4" style="padding:12px;color:var(--muted)">Sem dizimistas/colaboradores cadastrados para esta paróquia.</td></tr>';
+      // Capelas (se cadastradas pelo coordenador)
+      const capelas = Array.isArray(paroquia.capelas) ? paroquia.capelas : [];
+      const cardCapelas = el('card-capelas');
+      const listaCapelas = el('lista-capelas');
+      if (cardCapelas && listaCapelas) {
+        if (capelas.length) {
+          cardCapelas.style.display = '';
+          listaCapelas.innerHTML = capelas.map(c => `
+            <div class="card" style="margin:0">
+              <strong>${(c.nome || 'Capela').replace(/[<>]/g, '')}</strong>
+              ${c.endereco ? `<p class="muted">📍 ${String(c.endereco).replace(/[<>]/g, '')}</p>` : ''}
+              ${c.responsavel ? `<p class="muted">👤 ${String(c.responsavel).replace(/[<>]/g, '')}</p>` : ''}
+              ${c.horario ? `<p class="muted">🕒 ${String(c.horario).replace(/[<>]/g, '')}</p>` : ''}
+              ${c.info ? `<p>${String(c.info).replace(/[<>]/g, '')}</p>` : ''}
+            </div>
+          `).join('');
+        } else {
+          cardCapelas.style.display = 'none';
+          listaCapelas.innerHTML = '';
+        }
       }
+
+      renderQuizDiario();
 
       el('novidades').innerHTML = novidades.map(n =>
         `<li><strong>${n.titulo || 'Comunicado'}</strong> — ${n.mensagem || ''}</li>`

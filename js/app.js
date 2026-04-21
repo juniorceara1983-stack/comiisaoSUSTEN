@@ -1007,7 +1007,79 @@ const renderConfiguracoes = () => {
   const fields = ['cfg-nome','cfg-endereco','cfg-telefone','cfg-pix-chave','cfg-pix-tipo','cfg-pix-nome','cfg-pix-banco','cfg-whatsapp'];
   const vals   = [p.nome, p.endereco, p.telefone, p.pixChave, p.pixTipo, p.pixNome, p.pixBanco, p.whatsappAdmin];
   fields.forEach((id, i) => { const el = $(id); if (el) el.value = vals[i] || ''; });
+  renderCapelas();
 };
+
+/** Renderiza a lista editável de capelas em Configurações. */
+const renderCapelas = () => {
+  const box = $('capelas-list');
+  if (!box) return;
+  const lista = _getCapelasState();
+  box.innerHTML = lista.map((c, idx) => `
+    <div class="card" data-capela-idx="${idx}" style="padding:10px;display:grid;gap:6px;grid-template-columns:1fr 1fr;">
+      <div class="form-group" style="margin:0;grid-column:1/3">
+        <label class="form-label">Nome da capela *</label>
+        <input type="text" class="form-control cap-nome" value="${escapeHtml(c.nome || '')}" />
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Endereço</label>
+        <input type="text" class="form-control cap-endereco" value="${escapeHtml(c.endereco || '')}" />
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Responsável</label>
+        <input type="text" class="form-control cap-responsavel" value="${escapeHtml(c.responsavel || '')}" />
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Horário de missas</label>
+        <input type="text" class="form-control cap-horario" value="${escapeHtml(c.horario || '')}" placeholder="Ex: Dom 8h, Sáb 19h" />
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Informações</label>
+        <input type="text" class="form-control cap-info" value="${escapeHtml(c.info || '')}" />
+      </div>
+      <div style="grid-column:1/3;display:flex;justify-content:flex-end">
+        <button type="button" class="btn btn-outline btn-sm" data-remove-capela="${idx}">🗑️ Remover</button>
+      </div>
+    </div>
+  `).join('') || '<p style="font-size:0.85rem;color:var(--text-secondary);margin:0">Nenhuma capela cadastrada. Use "+ Adicionar capela" para começar.</p>';
+
+  box.querySelectorAll('[data-remove-capela]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = Number(btn.dataset.removeCapela);
+      const atuais = _lerCapelasDoDOM();
+      atuais.splice(i, 1);
+      _setCapelasState(atuais);
+      renderCapelas();
+    });
+  });
+};
+
+const _getCapelasState = () => {
+  const p = State.paroquia || {};
+  if (Array.isArray(p.capelas)) return p.capelas.slice();
+  if (typeof p.capelas === 'string' && p.capelas) {
+    try { const arr = JSON.parse(p.capelas); if (Array.isArray(arr)) return arr; } catch (_) {}
+  }
+  return [];
+};
+const _setCapelasState = (arr) => {
+  if (!State.paroquia) State.paroquia = {};
+  State.paroquia.capelas = Array.isArray(arr) ? arr : [];
+};
+/** Lê as capelas atualmente digitadas nos inputs da UI. */
+const _lerCapelasDoDOM = () => {
+  const box = $('capelas-list');
+  if (!box) return _getCapelasState();
+  return Array.from(box.querySelectorAll('[data-capela-idx]')).map(card => ({
+    nome:        card.querySelector('.cap-nome')?.value.trim() || '',
+    endereco:    card.querySelector('.cap-endereco')?.value.trim() || '',
+    responsavel: card.querySelector('.cap-responsavel')?.value.trim() || '',
+    horario:     card.querySelector('.cap-horario')?.value.trim() || '',
+    info:        card.querySelector('.cap-info')?.value.trim() || ''
+  })).filter(c => c.nome);
+};
+const _escapeAttr = escapeHtml; // alias para templates de capelas
+
 
 const salvarConfiguracoes = async () => {
   if (!State.paroquia) State.paroquia = {};
@@ -1020,14 +1092,17 @@ const salvarConfiguracoes = async () => {
   p.pixNome       = $('cfg-pix-nome').value.trim();
   p.pixBanco      = $('cfg-pix-banco').value.trim();
   p.whatsappAdmin = $('cfg-whatsapp').value.replace(/\D/g,'');
+  // Capelas digitadas na UI
+  p.capelas = _lerCapelasDoDOM();
 
   // Persiste e, em caso de sucesso, recarrega dados para que os
   // modelos de mensagem/dados PIX/endereço reflitam imediatamente
   // no card de Comunicação e no Painel do Fiel.
   // Inclui também os templates de WhatsApp atuais para não sobrescrever
-  // customizações ao salvar a paróquia.
+  // customizações ao salvar a paróquia, e as capelas serializadas.
   const payload = Object.assign({}, p, {
-    wa_templates: JSON.stringify(State.whatsappTemplates || [])
+    wa_templates: JSON.stringify(State.whatsappTemplates || []),
+    capelas: JSON.stringify(p.capelas || [])
   });
   try {
     const resp = await API.saveConfig(payload);
@@ -1042,6 +1117,7 @@ const salvarConfiguracoes = async () => {
   // Atualiza telas que dependem dessas configurações
   renderComunicacao();
   renderDizimo();
+  renderCapelas();
 };
 
 /* ══════════════════════════════════════════════════════════════
@@ -1618,6 +1694,17 @@ const _normalizarConfigParoquia = (cfg) => {
   campos.forEach(k => {
     if (cfg[k] !== undefined && cfg[k] !== '') out[k] = cfg[k];
   });
+  // Capelas: aceitam JSON string ou array
+  if (cfg.capelas !== undefined && cfg.capelas !== '') {
+    if (Array.isArray(cfg.capelas)) {
+      out.capelas = cfg.capelas;
+    } else if (typeof cfg.capelas === 'string') {
+      try {
+        const arr = JSON.parse(cfg.capelas);
+        if (Array.isArray(arr)) out.capelas = arr;
+      } catch (_) { /* mantém como está */ }
+    }
+  }
   return out;
 };
 
@@ -1695,6 +1782,16 @@ const bindEvents = () => {
   $('btn-publicar-recado')?.addEventListener('click', publicarRecadoPainelFiel);
 
   $('btn-salvar-config')?.addEventListener('click', salvarConfiguracoes);
+
+  // Capelas: adicionar nova linha editável
+  document.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'btn-add-capela') {
+      const atuais = _lerCapelasDoDOM();
+      atuais.push({ nome: '', endereco: '', responsavel: '', horario: '', info: '' });
+      _setCapelasState(atuais);
+      renderCapelas();
+    }
+  });
 
   // ─── Pastoral: Caridade ──────────────────────────────────────
   $('btn-novo-caritativo')?.addEventListener('click', () => {
