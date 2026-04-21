@@ -63,6 +63,7 @@
         <button id="btnEntrar" type="submit">Entrar</button>
       </form>
       <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap">
+        <button id="btnTrocarPainel" type="button" style="padding:8px 14px">Painel do Coordenador</button>
         <button id="btnSair" type="button" style="padding:8px 14px">Sair</button>
         <span class="muted">Acesse pela tela de login unificada.</span>
       </div>
@@ -303,6 +304,17 @@
       try { localStorage.removeItem(SESSION_KEY); } catch (_) {}
       try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
       location.replace('login.html');
+    });
+
+    el('btnTrocarPainel')?.addEventListener('click', () => {
+      let sess = null;
+      try { sess = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch (_) { sess = null; }
+      const perfil = String(sess && sess.perfil ? sess.perfil : '').toLowerCase();
+      if (perfil === 'coordenador' || perfil === 'admin' || perfil === 'padre') {
+        location.replace('index.html');
+        return;
+      }
+      el('sessao')?.textContent = 'Você não tem permissão para acessar o painel do coordenador. Entre com uma conta de coordenador, admin ou padre.';
     });
 
     el('loginForm').addEventListener('submit', async (ev) => {
