@@ -749,7 +749,7 @@ function _listarParoquiasFiel() {
 
   return Object.keys(paroquias)
     .map(k => paroquias[k])
-    .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
+    .sort((a, b) => (a.nome || '').localeCompare((b.nome || ''), 'pt-BR'));
 }
 
 function getParoquiasFiel() {

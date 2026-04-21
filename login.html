@@ -154,6 +154,10 @@
           : paroquiaSel;
         const dizimista = el('f-dizimista').value;
 
+        if (paroquiaSel === '__nova__' && !paroquiaNova) {
+          setMsg('Informe o nome da nova paróquia.', 'err');
+          return;
+        }
         if (!nome || !email || !telefone || !paroquia_id) {
           setMsg('Preencha nome, e-mail, telefone e paróquia.', 'err');
           return;
