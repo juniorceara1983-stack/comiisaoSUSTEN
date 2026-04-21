@@ -905,9 +905,6 @@ const renderConfiguracoes = () => {
   const fields = ['cfg-nome','cfg-endereco','cfg-telefone','cfg-pix-chave','cfg-pix-tipo','cfg-pix-nome','cfg-pix-banco','cfg-whatsapp'];
   const vals   = [p.nome, p.endereco, p.telefone, p.pixChave, p.pixTipo, p.pixNome, p.pixBanco, p.whatsappAdmin];
   fields.forEach((id, i) => { const el = $(id); if (el) el.value = vals[i] || ''; });
-  // URL do Web App (Apps Script) – lida da configuração global
-  const urlEl = $('cfg-apps-script-url');
-  if (urlEl) urlEl.value = (window.SUSTEN_CONFIG && window.SUSTEN_CONFIG.appsScriptUrl) || '';
 };
 
 const salvarConfiguracoes = async () => {
@@ -920,11 +917,6 @@ const salvarConfiguracoes = async () => {
   p.pixNome       = $('cfg-pix-nome').value.trim();
   p.pixBanco      = $('cfg-pix-banco').value.trim();
   p.whatsappAdmin = $('cfg-whatsapp').value.replace(/\D/g,'');
-  // Persiste a URL do Web App para uso imediato pela camada API
-  const urlEl = $('cfg-apps-script-url');
-  if (urlEl && window.SUSTEN_CONFIG_API) {
-    window.SUSTEN_CONFIG_API.set({ appsScriptUrl: urlEl.value.trim() });
-  }
   toast('Configurações salvas!', 'success');
   API.saveConfig(p).catch(() => {});
 };
