@@ -24,6 +24,7 @@ const State = {
   inventario:             [],
   prestacaoContas:        [],
   recados:                [],
+  whatsappTemplates:      [],
   versiculoIdx:           0,
   filterLancamentos:  'todos',
   filterVoluntarios:  'todos',
@@ -710,16 +711,26 @@ const salvarMembro = () => {
    COMUNICAÇÃO / WHATSAPP
    ══════════════════════════════════════════════════════════════ */
 const renderComunicacao = () => {
-  const templates = DEMO_DATA.whatsappTemplates;
+  const templates = State.whatsappTemplates && State.whatsappTemplates.length
+    ? State.whatsappTemplates
+    : (DEMO_DATA.whatsappTemplates || []);
 
   const list = $('template-list');
   if (list) {
     list.innerHTML = templates.map(t => `
       <div class="template-card" data-id="${t.id}" onclick="selecionarTemplate('${t.id}')">
         <div class="template-title">${t.titulo}</div>
-        <div class="template-preview">${t.texto.replace(/\n/g,' ').substring(0,90)}…</div>
+        <div class="template-preview">${(t.texto || '').replace(/\n/g,' ').substring(0,90)}…</div>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <button type="button" class="btn btn-outline btn-sm" onclick="event.stopPropagation();editarTemplate('${t.id}')">✏️ Editar</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="event.stopPropagation();excluirTemplate('${t.id}')">🗑️ Excluir</button>
+        </div>
       </div>
-    `).join('');
+    `).join('') + `
+      <div style="margin-top:10px">
+        <button type="button" class="btn btn-primary btn-sm" id="btn-novo-template">+ Novo modelo de mensagem</button>
+      </div>`;
+    $('btn-novo-template')?.addEventListener('click', () => editarTemplate(null));
   }
 
   // Preencher select de membros
@@ -775,12 +786,54 @@ const publicarRecadoPainelFiel = async () => {
 };
 
 window.selecionarTemplate = id => {
-  const tmpl = DEMO_DATA.whatsappTemplates.find(t => t.id === id);
+  const lista = State.whatsappTemplates && State.whatsappTemplates.length
+    ? State.whatsappTemplates
+    : (DEMO_DATA.whatsappTemplates || []);
+  const tmpl = lista.find(t => t.id === id);
   if (!tmpl) return;
   State.selectedTemplate = tmpl;
 
   document.querySelectorAll('.template-card').forEach(c => c.classList.toggle('selected', c.dataset.id === id));
   atualizarPreviewWA();
+};
+
+/** Abre prompts para criar/editar um modelo e persiste via saveConfig. */
+window.editarTemplate = async (id) => {
+  const lista = Array.isArray(State.whatsappTemplates) ? State.whatsappTemplates.slice() : [];
+  const existente = id ? lista.find(t => t.id === id) : null;
+  const titulo = window.prompt('Título do modelo:', existente ? existente.titulo : '');
+  if (titulo === null) return;
+  const texto = window.prompt('Texto da mensagem (use {NOME}, {VALOR}, {MES}, {EVENTO}, {DATA}, {HORA}, {LOCAL}, {META} como variáveis):', existente ? existente.texto : '');
+  if (texto === null) return;
+  if (!titulo.trim() || !texto.trim()) return toast('Título e texto são obrigatórios.', 'warning');
+
+  if (existente) {
+    existente.titulo = titulo.trim();
+    existente.texto = texto;
+  } else {
+    const novoId = 'tmpl-' + Date.now();
+    lista.push({ id: novoId, titulo: titulo.trim(), texto: texto, emoji: '💬' });
+  }
+  State.whatsappTemplates = lista;
+  renderComunicacao();
+  await _persistirTemplatesWA();
+  toast('Modelo salvo.', 'success');
+};
+
+window.excluirTemplate = async (id) => {
+  if (!window.confirm('Remover este modelo de mensagem?')) return;
+  State.whatsappTemplates = (State.whatsappTemplates || []).filter(t => t.id !== id);
+  renderComunicacao();
+  await _persistirTemplatesWA();
+  toast('Modelo removido.', 'success');
+};
+
+const _persistirTemplatesWA = async () => {
+  const p = State.paroquia || {};
+  const payload = Object.assign({}, p, {
+    wa_templates: JSON.stringify(State.whatsappTemplates || [])
+  });
+  try { await API.saveConfig(payload); } catch (_) { /* offline ok */ }
 };
 
 const atualizarPreviewWA = () => {
@@ -829,7 +882,10 @@ const atualizarPreviewWA = () => {
 
 window.enviarWhatsApp = (telefone, templateId, nome) => {
   if (!telefone) return toast('Telefone não cadastrado.', 'warning');
-  const tmpl = DEMO_DATA.whatsappTemplates.find(t => t.id === templateId);
+  const lista = State.whatsappTemplates && State.whatsappTemplates.length
+    ? State.whatsappTemplates
+    : (DEMO_DATA.whatsappTemplates || []);
+  const tmpl = lista.find(t => t.id === templateId);
   const txt  = tmpl ? tmpl.texto.replace(/{NOME}/g, nome) : `Olá, ${nome}!`;
   const url  = `https://wa.me/${telefone}?text=${encodeURIComponent(txt)}`;
   window.open(url, '_blank', 'noopener');
@@ -875,25 +931,71 @@ const renderRelatorios = () => {
 
 const exportarRelatorio = tipo => {
   const relatorios = {
-    financeiro:  () => exportCSV(State.lancamentos, 'relatorio-financeiro'),
-    voluntarios: () => exportCSV(State.voluntarios, 'banco-voluntarios'),
-    membros:     () => exportCSV(State.membros, 'lista-membros'),
-    metas:       () => exportCSV(State.metas, 'metas-projetos')
+    financeiro:  () => exportarPDF('Relatório Financeiro', 'relatorio-financeiro', State.lancamentos),
+    voluntarios: () => exportarPDF('Banco de Voluntários', 'banco-voluntarios', State.voluntarios),
+    membros:     () => exportarPDF('Lista de Membros', 'lista-membros', State.membros),
+    metas:       () => exportarPDF('Metas e Projetos', 'metas-projetos', State.metas)
   };
   relatorios[tipo]?.();
 };
 
-const exportCSV = (data, filename) => {
-  if (!data.length) return toast('Sem dados para exportar.', 'warning');
-  const keys = Object.keys(data[0]).filter(k => k !== 'foto');
-  const header = keys.join(';') + '\n';
-  const rows   = data.map(row => keys.map(k => `"${String(row[k] ?? '').replace(/"/g,'""')}"`).join(';')).join('\n');
-  const blob   = new Blob(['\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8;' });
-  const url    = URL.createObjectURL(blob);
-  const a      = document.createElement('a');
-  a.href = url; a.download = `${filename}-${new Date().toISOString().split('T')[0]}.csv`;
-  a.click(); URL.revokeObjectURL(url);
-  toast('Relatório exportado!', 'success');
+/**
+ * Exporta relatório em PDF usando a caixa de diálogo nativa de impressão
+ * do navegador (Salvar como PDF). Não depende de jsPDF — abordagem
+ * similar à usada em outros sistemas internos (ex. Estoque Farmácia).
+ */
+const exportarPDF = (titulo, filename, dados) => {
+  if (!Array.isArray(dados) || !dados.length) {
+    return toast('Sem dados para exportar.', 'warning');
+  }
+  const keys = Object.keys(dados[0]).filter(k => k !== 'foto');
+  const esc = (s) => String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  const paroquiaNome = (State.paroquia && State.paroquia.nome) || 'SUSTEN';
+  const gerado = new Date().toLocaleString('pt-BR');
+  const thead = keys.map(k => `<th>${esc(k)}</th>`).join('');
+  const tbody = dados.map(row =>
+    `<tr>${keys.map(k => `<td>${esc(row[k])}</td>`).join('')}</tr>`
+  ).join('');
+  const html = `<!doctype html><html lang="pt-BR"><head>
+    <meta charset="utf-8">
+    <title>${esc(filename)}</title>
+    <style>
+      body { font-family: Arial, Helvetica, sans-serif; color:#1f2933; margin: 24px; }
+      h1 { margin: 0 0 4px; font-size: 18px; }
+      .sub { color:#6b7785; font-size: 12px; margin: 0 0 16px; }
+      table { width:100%; border-collapse: collapse; font-size: 11px; }
+      th, td { border: 1px solid #ccc; padding: 6px 8px; text-align:left; vertical-align: top; }
+      th { background:#f0f2f5; }
+      tr:nth-child(even) td { background:#fafbfc; }
+      @media print { .noprint { display: none; } body { margin: 10mm; } }
+      .bar { display:flex; gap:8px; justify-content:flex-end; margin-bottom:10px; }
+      .btn { padding: 8px 14px; border:1px solid #999; border-radius:6px; background:#fff; cursor:pointer; }
+      .btn.primary { background:#2f6f7e; color:#fff; border-color:#2f6f7e; }
+    </style>
+  </head><body>
+    <div class="bar noprint">
+      <button class="btn" onclick="window.close()">Fechar</button>
+      <button class="btn primary" onclick="window.print()">🖨️ Salvar como PDF / Imprimir</button>
+    </div>
+    <h1>${esc(titulo)}</h1>
+    <p class="sub">${esc(paroquiaNome)} • Gerado em ${esc(gerado)} • ${dados.length} registro(s)</p>
+    <table><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table>
+    <script>window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 300); });<\/script>
+  </body></html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) {
+    toast('Permita pop-ups para baixar o relatório em PDF.', 'warning');
+    return;
+  }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  try { win.document.title = filename; } catch (_) {}
+  toast('Relatório pronto — use "Salvar como PDF" na janela de impressão.', 'success', 4500);
 };
 
 /* ══════════════════════════════════════════════════════════════
@@ -905,9 +1007,81 @@ const renderConfiguracoes = () => {
   const fields = ['cfg-nome','cfg-endereco','cfg-telefone','cfg-pix-chave','cfg-pix-tipo','cfg-pix-nome','cfg-pix-banco','cfg-whatsapp'];
   const vals   = [p.nome, p.endereco, p.telefone, p.pixChave, p.pixTipo, p.pixNome, p.pixBanco, p.whatsappAdmin];
   fields.forEach((id, i) => { const el = $(id); if (el) el.value = vals[i] || ''; });
+  renderCapelas();
 };
 
+/** Renderiza a lista editável de capelas em Configurações. */
+const renderCapelas = () => {
+  const box = $('capelas-list');
+  if (!box) return;
+  const lista = _getCapelasState();
+  box.innerHTML = lista.map((c, idx) => `
+    <div class="card" data-capela-idx="${idx}" style="padding:10px;display:grid;gap:6px;grid-template-columns:1fr 1fr;">
+      <div class="form-group" style="margin:0;grid-column:1/3">
+        <label class="form-label">Nome da capela *</label>
+        <input type="text" class="form-control cap-nome" value="${escapeHtml(c.nome || '')}" />
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Endereço</label>
+        <input type="text" class="form-control cap-endereco" value="${escapeHtml(c.endereco || '')}" />
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Responsável</label>
+        <input type="text" class="form-control cap-responsavel" value="${escapeHtml(c.responsavel || '')}" />
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Horário de missas</label>
+        <input type="text" class="form-control cap-horario" value="${escapeHtml(c.horario || '')}" placeholder="Ex: Dom 8h, Sáb 19h" />
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Informações</label>
+        <input type="text" class="form-control cap-info" value="${escapeHtml(c.info || '')}" />
+      </div>
+      <div style="grid-column:1/3;display:flex;justify-content:flex-end">
+        <button type="button" class="btn btn-outline btn-sm" data-remove-capela="${idx}">🗑️ Remover</button>
+      </div>
+    </div>
+  `).join('') || '<p style="font-size:0.85rem;color:var(--text-secondary);margin:0">Nenhuma capela cadastrada. Use "+ Adicionar capela" para começar.</p>';
+
+  box.querySelectorAll('[data-remove-capela]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = Number(btn.dataset.removeCapela);
+      const atuais = _lerCapelasDoDOM();
+      atuais.splice(i, 1);
+      _setCapelasState(atuais);
+      renderCapelas();
+    });
+  });
+};
+
+const _getCapelasState = () => {
+  const p = State.paroquia || {};
+  if (Array.isArray(p.capelas)) return p.capelas.slice();
+  if (typeof p.capelas === 'string' && p.capelas) {
+    try { const arr = JSON.parse(p.capelas); if (Array.isArray(arr)) return arr; } catch (_) {}
+  }
+  return [];
+};
+const _setCapelasState = (arr) => {
+  if (!State.paroquia) State.paroquia = {};
+  State.paroquia.capelas = Array.isArray(arr) ? arr : [];
+};
+/** Lê as capelas atualmente digitadas nos inputs da UI. */
+const _lerCapelasDoDOM = () => {
+  const box = $('capelas-list');
+  if (!box) return _getCapelasState();
+  return Array.from(box.querySelectorAll('[data-capela-idx]')).map(card => ({
+    nome:        card.querySelector('.cap-nome')?.value.trim() || '',
+    endereco:    card.querySelector('.cap-endereco')?.value.trim() || '',
+    responsavel: card.querySelector('.cap-responsavel')?.value.trim() || '',
+    horario:     card.querySelector('.cap-horario')?.value.trim() || '',
+    info:        card.querySelector('.cap-info')?.value.trim() || ''
+  })).filter(c => c.nome);
+};
+
+
 const salvarConfiguracoes = async () => {
+  if (!State.paroquia) State.paroquia = {};
   const p = State.paroquia;
   p.nome          = $('cfg-nome').value.trim();
   p.endereco      = $('cfg-endereco').value.trim();
@@ -917,8 +1091,32 @@ const salvarConfiguracoes = async () => {
   p.pixNome       = $('cfg-pix-nome').value.trim();
   p.pixBanco      = $('cfg-pix-banco').value.trim();
   p.whatsappAdmin = $('cfg-whatsapp').value.replace(/\D/g,'');
-  toast('Configurações salvas!', 'success');
-  API.saveConfig(p).catch(() => {});
+  // Capelas digitadas na UI
+  p.capelas = _lerCapelasDoDOM();
+
+  // Persiste e, em caso de sucesso, recarrega dados para que os
+  // modelos de mensagem/dados PIX/endereço reflitam imediatamente
+  // no card de Comunicação e no Painel do Fiel.
+  // Inclui também os templates de WhatsApp atuais para não sobrescrever
+  // customizações ao salvar a paróquia, e as capelas serializadas.
+  const payload = Object.assign({}, p, {
+    wa_templates: JSON.stringify(State.whatsappTemplates || []),
+    capelas: JSON.stringify(p.capelas || [])
+  });
+  try {
+    const resp = await API.saveConfig(payload);
+    if (resp && resp.erro) {
+      toast('Configuração salva localmente, mas houve um erro no servidor: ' + resp.erro, 'warning');
+    } else {
+      toast('Configurações salvas!', 'success');
+    }
+  } catch (_) {
+    toast('Configurações salvas localmente (offline).', 'info');
+  }
+  // Atualiza telas que dependem dessas configurações
+  renderComunicacao();
+  renderDizimo();
+  renderCapelas();
 };
 
 /* ══════════════════════════════════════════════════════════════
@@ -1439,7 +1637,8 @@ const carregarDados = async () => {
     API.getManutencaoPatrimonial().catch(() => null),
     API.getInventario().catch(() => null),
     API.getPrestacaoContas().catch(() => null),
-    API.getRecados().catch(() => null)
+    API.getRecados().catch(() => null),
+    API.getConfig().catch(() => null)
   ]);
 
   // Se o backend responder que a sessão não está autorizada
@@ -1457,14 +1656,21 @@ const carregarDados = async () => {
 
   // Respostas com { erro: ... } são tratadas como ausência de dados (usa demo)
   const limpo = respostas.map(r => (r && typeof r === 'object' && r.erro) ? null : r);
-  const [fin, lanc, metas, vols, mems, fundo, imp, metasEv, term, cae, mant, inv, prest, rec] = limpo;
+  const [fin, lanc, metas, vols, mems, fundo, imp, metasEv, term, cae, mant, inv, prest, rec, cfg] = limpo;
 
   State.financeiro             = fin     || DEMO_DATA.financeiro;
   State.lancamentos            = lanc    || DEMO_DATA.lancamentos;
   State.metas                  = metas   || DEMO_DATA.metas;
   State.voluntarios            = vols    || DEMO_DATA.voluntarios;
   State.membros                = mems    || DEMO_DATA.membros;
-  State.paroquia               = DEMO_DATA.paroquia;
+  // Combina Configurações salvas (backend) com os padrões da demo, de
+  // modo que o painel do fiel e o painel do coordenador apresentem os
+  // dados efetivamente cadastrados na tela de Configurações.
+  State.paroquia = Object.assign({}, DEMO_DATA.paroquia, _normalizarConfigParoquia(cfg));
+  // Modelos de WhatsApp: se coordenador salvou customizações em
+  // Configurações (chave `wa_templates` = JSON), usa elas; caso
+  // contrário mantém os modelos padrão do DEMO_DATA.
+  State.whatsappTemplates = _carregarTemplatesWA(cfg);
   State.fundoCaritativo        = fundo   || DEMO_DATA.fundoCaritativo       || [];
   State.impactoCaridade        = imp     || DEMO_DATA.impactoCaridade       || null;
   State.metasEvangelizacao     = metasEv || DEMO_DATA.metasEvangelizacao    || [];
@@ -1476,6 +1682,41 @@ const carregarDados = async () => {
   State.recados                = rec     || [];
 
   if (!fin) toast('Modo demonstração ativo – dados de exemplo carregados.', 'info', 5000);
+};
+
+/** Converte as chaves de configuração salvas em backend para o formato
+ *  utilizado por State.paroquia (espelha salvarConfiguracoes). */
+const _normalizarConfigParoquia = (cfg) => {
+  if (!cfg || typeof cfg !== 'object') return {};
+  const campos = ['nome','endereco','telefone','pixChave','pixTipo','pixNome','pixBanco','whatsappAdmin','pixQrUrl'];
+  const out = {};
+  campos.forEach(k => {
+    if (cfg[k] !== undefined && cfg[k] !== '') out[k] = cfg[k];
+  });
+  // Capelas: aceitam JSON string ou array
+  if (cfg.capelas !== undefined && cfg.capelas !== '') {
+    if (Array.isArray(cfg.capelas)) {
+      out.capelas = cfg.capelas;
+    } else if (typeof cfg.capelas === 'string') {
+      try {
+        const arr = JSON.parse(cfg.capelas);
+        if (Array.isArray(arr)) out.capelas = arr;
+      } catch (_) { /* mantém como está */ }
+    }
+  }
+  return out;
+};
+
+/** Modelos de WhatsApp configuráveis: armazenados em Configurações
+ *  como JSON na chave `wa_templates`. */
+const _carregarTemplatesWA = (cfg) => {
+  if (cfg && typeof cfg === 'object' && cfg.wa_templates) {
+    try {
+      const arr = JSON.parse(cfg.wa_templates);
+      if (Array.isArray(arr) && arr.length) return arr;
+    } catch (_) { /* fallback abaixo */ }
+  }
+  return (DEMO_DATA.whatsappTemplates || []).map(t => Object.assign({}, t));
 };
 
 const bindEvents = () => {
@@ -1540,6 +1781,16 @@ const bindEvents = () => {
   $('btn-publicar-recado')?.addEventListener('click', publicarRecadoPainelFiel);
 
   $('btn-salvar-config')?.addEventListener('click', salvarConfiguracoes);
+
+  // Capelas: adicionar nova linha editável
+  document.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'btn-add-capela') {
+      const atuais = _lerCapelasDoDOM();
+      atuais.push({ nome: '', endereco: '', responsavel: '', horario: '', info: '' });
+      _setCapelasState(atuais);
+      renderCapelas();
+    }
+  });
 
   // ─── Pastoral: Caridade ──────────────────────────────────────
   $('btn-novo-caritativo')?.addEventListener('click', () => {

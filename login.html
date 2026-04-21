@@ -72,6 +72,12 @@
         <label for="f-paroquia-nova">Nova paróquia</label>
         <input id="f-paroquia-nova" type="text" placeholder="Ex: Paróquia São José" />
         <div class="hint">Digite o nome da nova paróquia para cadastrá-la.</div>
+
+        <label for="f-capelas">Capelas da paróquia (opcional)</label>
+        <textarea id="f-capelas" rows="3" placeholder="Uma capela por linha. Ex:
+Capela Nossa Senhora de Fátima
+Capela Santo Antônio"></textarea>
+        <div class="hint">Você poderá adicionar/editar capelas depois em Configurações.</div>
       </div>
 
       <div id="box-dizimista">
@@ -132,9 +138,9 @@
 
       async function carregarParoquias() {
         const dados = await API.getParoquiasFiel();
-        const paroquias = (dados && dados.ok && Array.isArray(dados.paroquias) && dados.paroquias.length)
+        const paroquias = (dados && dados.ok && Array.isArray(dados.paroquias))
           ? dados.paroquias
-          : [{ id: 'paroquia-geral', nome: 'Paróquia Geral' }];
+          : [];
         el('f-paroquia').innerHTML = '<option value="">Selecione a paróquia</option>' +
           paroquias.map(p => `<option value="${p.id}">${p.nome}</option>`).join('') +
           '<option value="__nova__">+ Cadastrar nova paróquia</option>';
@@ -172,6 +178,10 @@
             email: email,
             telefone: telefone,
             paroquia_id: paroquia_id,
+            paroquia_nome: paroquiaSel === '__nova__' ? paroquiaNova : undefined,
+            capelas: paroquiaSel === '__nova__'
+              ? el('f-capelas').value.split(/\r?\n/).map(s => s.trim()).filter(Boolean).map(nome => ({ nome: nome }))
+              : undefined,
             dizimista: dizimista
           });
           if (!resp) {

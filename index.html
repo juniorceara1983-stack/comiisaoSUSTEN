@@ -962,7 +962,7 @@
     <section id="page-relatorios" class="page">
       <div class="page-header">
         <h1 class="page-title">📊 Relatórios e Exportações</h1>
-        <p class="page-subtitle">Exporte dados em CSV compatível com Excel / Google Sheets</p>
+        <p class="page-subtitle">Baixe relatórios em PDF (via caixa de diálogo do navegador)</p>
       </div>
 
       <div class="report-grid">
@@ -970,34 +970,34 @@
           <span class="report-icon">💰</span>
           <div class="report-title">Relatório Financeiro</div>
           <div class="report-desc">Todos os lançamentos de receitas e despesas</div>
-          <button class="btn btn-primary btn-sm mt-2" data-export="financeiro">📥 Exportar CSV</button>
+          <button class="btn btn-primary btn-sm mt-2" data-export="financeiro">📥 Baixar PDF</button>
         </div>
         <div class="report-card" onclick="exportarRelatorio('membros')">
           <span class="report-icon">👥</span>
           <div class="report-title">Lista de Membros</div>
           <div class="report-desc">Dizimistas, colaboradores e novos membros</div>
-          <button class="btn btn-primary btn-sm mt-2" data-export="membros">📥 Exportar CSV</button>
+          <button class="btn btn-primary btn-sm mt-2" data-export="membros">📥 Baixar PDF</button>
         </div>
         <div class="report-card" onclick="exportarRelatorio('voluntarios')">
           <span class="report-icon">🤝</span>
           <div class="report-title">Banco de Voluntários</div>
           <div class="report-desc">Todos os voluntários cadastrados e seus talentos</div>
-          <button class="btn btn-primary btn-sm mt-2" data-export="voluntarios">📥 Exportar CSV</button>
+          <button class="btn btn-primary btn-sm mt-2" data-export="voluntarios">📥 Baixar PDF</button>
         </div>
         <div class="report-card" onclick="exportarRelatorio('metas')">
           <span class="report-icon">🎯</span>
           <div class="report-title">Metas e Projetos</div>
           <div class="report-desc">Status de todos os projetos e metas de arrecadação</div>
-          <button class="btn btn-primary btn-sm mt-2" data-export="metas">📥 Exportar CSV</button>
+          <button class="btn btn-primary btn-sm mt-2" data-export="metas">📥 Baixar PDF</button>
         </div>
       </div>
 
       <div class="card mt-3">
         <div class="card-header"><span class="card-title">📋 Notas sobre os Relatórios</span></div>
         <div style="font-size:0.85rem;color:var(--text-secondary);line-height:1.8">
-          <p>• Os arquivos CSV são exportados com codificação UTF-8 e separador ponto-e-vírgula (compatível com Excel brasileiro).</p>
-          <p>• Para abrir no Google Sheets: <em>Arquivo → Importar → selecionar arquivo → Separador: ponto e vírgula</em>.</p>
-          <p>• Os dados exportados refletem o estado atual do sistema, incluindo alterações não salvas no servidor.</p>
+          <p>• Ao clicar em "Baixar PDF", uma nova janela abre com o relatório formatado e a caixa de diálogo de impressão.</p>
+          <p>• Escolha <strong>"Salvar como PDF"</strong> (ou "Microsoft Print to PDF") como destino e clique em <em>Salvar</em>.</p>
+          <p>• Esta abordagem usa a impressão nativa do navegador, evitando bibliotecas externas (como jsPDF) que apresentaram falhas em outros sistemas.</p>
         </div>
       </div>
     </section>
@@ -1031,6 +1031,18 @@
                 <label class="form-label" for="cfg-whatsapp">Número do Administrador (com DDI)</label>
                 <input type="text" class="form-control" id="cfg-whatsapp" placeholder="5585999990000" />
               </div>
+            </div>
+          </div>
+
+          <!-- Capelas -->
+          <div class="settings-section">
+            <div class="settings-title">⛪ Capelas da Paróquia</div>
+            <div class="card">
+              <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:10px">
+                Cadastre as capelas vinculadas à sua paróquia. Serão exibidas no painel do fiel.
+              </p>
+              <div id="capelas-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
+              <button type="button" class="btn btn-outline btn-sm" id="btn-add-capela">+ Adicionar capela</button>
             </div>
           </div>
 
