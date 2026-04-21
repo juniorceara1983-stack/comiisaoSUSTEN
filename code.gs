@@ -890,10 +890,10 @@ function loginUnificado(payload) {
       // outra paróquia depois de cadastrado.
       const paroquiaOriginal = String(usuarioExistente.paroquia_id || '').trim();
       if (!paroquiaOriginal) {
-        return { ok: false, erro: 'Paróquia do coordenador não encontrada. Contate o administrador.' };
+        return { ok: false, erro: 'Coordenador sem paróquia vinculada no cadastro. Contate o administrador.' };
       }
       if (paroquia_id && paroquia_id !== paroquiaOriginal) {
-        return { ok: false, erro: 'Este e-mail já está vinculado a outra paróquia. O coordenador só pode acessar a paróquia originalmente cadastrada.' };
+        return { ok: false, erro: 'Este e-mail está vinculado a outra paróquia. Não é possível trocar de paróquia após o cadastro.' };
       }
       // Atualiza apenas nome/telefone (paroquia não muda)
       const atualizado = Object.assign({}, usuarioExistente, {

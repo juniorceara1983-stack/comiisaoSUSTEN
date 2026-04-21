@@ -1010,7 +1010,8 @@ const renderConfiguracoes = () => {
 };
 
 const salvarConfiguracoes = async () => {
-  const p = State.paroquia = State.paroquia || {};
+  if (!State.paroquia) State.paroquia = {};
+  const p = State.paroquia;
   p.nome          = $('cfg-nome').value.trim();
   p.endereco      = $('cfg-endereco').value.trim();
   p.telefone      = $('cfg-telefone').value.trim();
