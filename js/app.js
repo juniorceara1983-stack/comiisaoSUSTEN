@@ -1078,7 +1078,6 @@ const _lerCapelasDoDOM = () => {
     info:        card.querySelector('.cap-info')?.value.trim() || ''
   })).filter(c => c.nome);
 };
-const _escapeAttr = escapeHtml; // alias para templates de capelas
 
 
 const salvarConfiguracoes = async () => {
