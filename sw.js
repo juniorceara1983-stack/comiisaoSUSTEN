@@ -3,17 +3,20 @@
    Versão: 1.0.0
    =================================================== */
 
-const CACHE_NAME = 'susten-v1';
-const OFFLINE_URL = '/';
+const CACHE_NAME = 'susten-v2';
+const OFFLINE_URL = '/login.html';
 
 const STATIC_ASSETS = [
   '/',
+  '/login.html',
   '/index.html',
+  '/Fiel.html',
   '/manifest.json',
   '/css/style.css',
   '/js/app.js',
   '/js/api.js',
   '/js/charts.js',
+  '/js/config.js',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
   'https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Lato:wght@300;400;700&display=swap'
 ];

@@ -2,7 +2,7 @@
   "name": "SUSTEN - Gestão Paroquial",
   "short_name": "SUSTEN",
   "description": "Sistema de Gestão de Sustentabilidade e Engajamento Paroquial",
-  "start_url": "/",
+  "start_url": "login.html",
   "display": "standalone",
   "background_color": "#1a0a2e",
   "theme_color": "#6c3fc5",

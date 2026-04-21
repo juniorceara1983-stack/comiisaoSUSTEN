@@ -47,21 +47,25 @@
     <section class="card">
       <h1 class="title">Portal do Fiel</h1>
       <p class="sub">Acompanhe novidades, reformas e comunicados da sua paróquia.</p>
-      <form class="login" id="loginForm" style="margin-top:12px">
+      <form class="login" id="loginForm" style="margin-top:12px;display:none">
         <label for="login" class="sr-only">Nome</label>
-        <input id="login" type="text" placeholder="Nome (login)" required />
+        <input id="login" type="text" placeholder="Nome (login)" />
         <label for="senha" class="sr-only">Senha</label>
-        <input id="senha" type="tel" placeholder="Senha (número do WhatsApp)" required />
+        <input id="senha" type="tel" placeholder="Senha (número do WhatsApp)" />
         <label for="paroquia" class="sr-only">Paróquia</label>
-        <select id="paroquia" required></select>
+        <select id="paroquia"></select>
         <label for="dizimista" class="sr-only">É dizimista?</label>
-        <select id="dizimista" required>
+        <select id="dizimista">
           <option value="" disabled selected>É dizimista?</option>
           <option value="sim">Sim</option>
           <option value="não">Não</option>
         </select>
         <button id="btnEntrar" type="submit">Entrar</button>
       </form>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap">
+        <button id="btnSair" type="button" style="padding:8px 14px">Sair</button>
+        <span class="muted">Acesse pela tela de login unificada.</span>
+      </div>
       <p class="muted" id="sessao"></p>
     </section>
 
@@ -119,8 +123,18 @@
   <script>
     const el = id => document.getElementById(id);
     const STORAGE_KEY = 'susten_fiel_auth';
+    const SESSION_KEY = 'susten_sessao';
     let chart;
     let quizResposta = -1;
+
+    // Guarda de sessão: exige login na tela unificada.
+    (function ensureSession() {
+      let sess = null;
+      try { sess = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch (_) { sess = null; }
+      if (!sess || !sess.email) {
+        location.replace('login.html');
+      }
+    })();
 
     function statusClass(status) {
       const s = String(status || '').toLowerCase();
@@ -233,9 +247,24 @@
     }
 
     async function carregarPainel() {
-      const sessao = obterSessaoLocal();
+      let sessao = obterSessaoLocal();
+      // Preferir sessão unificada (susten_sessao) se a antiga estiver vazia
       if (!sessao || !sessao.login || !sessao.senha || !sessao.paroquia_id) {
-        el('sessao').textContent = 'Informe login, senha e paróquia para acessar.';
+        try {
+          const unified = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+          if (unified && unified.nome && unified.paroquia_id && unified.telefone) {
+            sessao = {
+              login: unified.nome,
+              senha: String(unified.telefone).replace(/\D/g, ''),
+              paroquia_id: unified.paroquia_id
+            };
+            salvarSessaoLocal(sessao);
+          }
+        } catch (_) {}
+      }
+      if (!sessao || !sessao.login || !sessao.senha || !sessao.paroquia_id) {
+        el('sessao').textContent = 'Sessão não encontrada. Redirecionando para o login…';
+        setTimeout(() => location.replace('login.html'), 800);
         return;
       }
 
@@ -270,26 +299,16 @@
       fb.textContent = Number(indice) === Number(quizResposta) ? '✅ Resposta correta!' : '❌ Tente novamente.';
     };
 
+    el('btnSair')?.addEventListener('click', () => {
+      try { localStorage.removeItem(SESSION_KEY); } catch (_) {}
+      try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
+      location.replace('login.html');
+    });
+
     el('loginForm').addEventListener('submit', async (ev) => {
       ev.preventDefault();
-      const login = el('login').value.trim();
-      const senha = normalizarZap55(el('senha').value);
-      const paroquia_id = el('paroquia').value;
-      const dizimista = el('dizimista').value;
-
-      if (!login || !senha || !paroquia_id || !dizimista) {
-        el('sessao').textContent = 'Preencha login, senha, paróquia e se é dizimista.';
-        return;
-      }
-
-      const auth = await API.loginFiel({ login, senha, paroquia_id, dizimista });
-      if (!auth || !auth.ok) {
-        el('sessao').textContent = auth?.erro || 'Não foi possível autenticar no momento.';
-        return;
-      }
-
-      salvarSessaoLocal({ login: auth.login || login, senha: auth.senha || senha, paroquia_id: auth.paroquia_id || paroquia_id });
-      await carregarPainel();
+      // Login agora é feito exclusivamente em login.html
+      location.replace('login.html');
     });
 
     carregarParoquias().then(carregarPainel);
