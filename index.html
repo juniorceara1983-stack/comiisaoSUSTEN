@@ -549,6 +549,35 @@
             </div>
           </div>
 
+          <div class="card" style="margin-bottom:1.25rem">
+            <div class="card-header"><span class="card-title">📣 Publicações para o Painel do Fiel</span></div>
+            <div class="form-group">
+              <label class="form-label" for="recado-tipo">Tipo de publicação</label>
+              <select class="form-control" id="recado-tipo">
+                <option value="comunicado">Comunicado</option>
+                <option value="novidade">Novidade</option>
+                <option value="dica_economia">Dica de economia doméstica</option>
+                <option value="mensagem_biblica">Mensagem bíblica (dízimo/serviço)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="recado-titulo">Título</label>
+              <input type="text" class="form-control" id="recado-titulo" placeholder="Ex: Dica da semana" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="recado-mensagem">Mensagem</label>
+              <textarea class="form-control" id="recado-mensagem" rows="4" placeholder="Digite o conteúdo para os fiéis..."></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="recado-destino">Destino</label>
+              <select class="form-control" id="recado-destino">
+                <option value="geral">Todas as paróquias</option>
+                <option value="paroquia">Somente minha paróquia</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" id="btn-publicar-recado">📤 Publicar no painel do fiel</button>
+          </div>
+
           <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
             <button class="btn btn-whatsapp flex-1" id="btn-enviar-wa">💬 Enviar via WhatsApp</button>
             <button class="btn btn-outline" id="btn-enviar-todos">📢 Enviar para Todos</button>
@@ -586,6 +615,11 @@
               <div>⚡ <strong>Gatilhos automáticos:</strong> Novos membros recebem boas-vindas automaticamente.</div>
               <div>🔒 <strong>Privacidade:</strong> Os números são tratados apenas para contato pastoral.</div>
             </div>
+          </div>
+
+          <div class="card mt-2">
+            <div class="card-header"><span class="card-title">🗂️ Últimas publicações</span></div>
+            <div id="lista-recados" style="display:flex;flex-direction:column;gap:0.75rem"></div>
           </div>
         </div>
       </div>

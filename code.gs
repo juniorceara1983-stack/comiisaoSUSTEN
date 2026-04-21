@@ -27,7 +27,8 @@ const SHEETS = {
   CONSELHO_ECONOMICO:    'Conselho_Economico',     // Governança / CAE
   MANUTENCAO_PATRIMONIAL:'Manutencao_Patrimonial', // Cuidado da Casa Comum
   INVENTARIO:            'Inventario',             // Inventário de bens
-  PRESTACAO_CONTAS:      'Prestacao_Contas'        // Balancetes publicados
+  PRESTACAO_CONTAS:      'Prestacao_Contas',       // Balancetes publicados
+  QUIZ_PERGUNTAS:        'Quiz_Perguntas'          // Banco de perguntas do quiz diário
 };
 
 /* ── Categorias de partilha "ad extra" (Dimensão Missionária) ── */
@@ -80,6 +81,11 @@ function _validarToken_(e, payload) {
 const CATEGORIA_DIZIMISTA = 'Dizimista';
 const CATEGORIA_NAO_DIZIMISTA = 'Não Dizimista';
 const MS_POR_DIA = 86400000;
+const QUIZ_DIARIO_TOTAL = 10;
+const QUIZ_BANCO_TOTAL = 300;
+const _CABECALHO_QUIZ = ['id','pergunta','opcao_a','opcao_b','opcao_c','opcao_d','resposta','tema','ativo'];
+const URL_LITURGIA_DIARIA = 'https://liturgia.cancaonova.com/pb/';
+const URL_SANTO_DO_DIA = 'https://santo.cancaonova.com/';
 
 /* ── Acesso à planilha ativa ──────────────────────────────── */
 /**
@@ -264,11 +270,7 @@ function _emailLogado() {
   try {
     const active = Session.getActiveUser().getEmail();
     if (active) return String(active).trim().toLowerCase();
-  } catch (_) {}
-  try {
-    const effective = Session.getEffectiveUser().getEmail();
-    if (effective) return String(effective).trim().toLowerCase();
-  } catch (_) {}
+  } catch (_) { /* acesso pode falhar para usuários anônimos do Web App */ }
   return '';
 }
 
@@ -281,8 +283,8 @@ function _emailDoPayload(payload) {
 function _resolverContextoUsuario(payload) {
   const headersUsuarios = ['id','email','nome','paroquia_id','perfil','ativo','telefone'];
   _garantirCabecalho(SHEETS.USUARIOS, headersUsuarios);
-  // 1) tenta o e-mail do Google; 2) aceita e-mail do payload (sessão do PWA)
-  let email = _emailLogado() || _emailDoPayload(payload);
+  // 1) prefere e-mail enviado pelo frontend autenticado; 2) fallback Google
+  let email = _emailDoPayload(payload) || _emailLogado();
   if (!email) return { ok: false, erro: 'Não foi possível identificar o e-mail do usuário.' };
 
   const usuarios = _lerAbaSemFiltro(SHEETS.USUARIOS);
@@ -926,33 +928,130 @@ function _configPorParoquia(paroquiaId) {
   return cfg;
 }
 
-function _conteudoPastoralDiario() {
+function _sementeDoDia(paroquiaId) {
+  const hoje = new Date();
+  const y = hoje.getUTCFullYear();
+  const m = String(hoje.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(hoje.getUTCDate()).padStart(2, '0');
+  const base = `${y}-${m}-${d}|${String(paroquiaId || '').toLowerCase()}`;
+  let seed = 0;
+  for (let i = 0; i < base.length; i++) seed = (seed * 31 + base.charCodeAt(i)) % 2147483647;
+  return seed || 1;
+}
+
+function _lcg(seed) {
+  let s = seed || 1;
+  return function() {
+    s = (s * 48271) % 2147483647;
+    return s / 2147483647;
+  };
+}
+
+function _embaralharComSeed(lista, seed) {
+  const arr = (lista || []).slice();
+  const rnd = _lcg(seed);
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    const tmp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = tmp;
+  }
+  return arr;
+}
+
+function _gerarBancoQuizPadrao_() {
+  const temas = [
+    'Dízimo', 'Serviço', 'Partilha', 'Caridade', 'Liturgia',
+    'Família', 'Evangelização', 'Comunidade', 'Oração', 'Missão'
+  ];
+  const acoes = [
+    'fortalece a comunidade', 'demonstra gratidão a Deus', 'apoia os mais pobres',
+    'incentiva a vida pastoral', 'edifica a unidade paroquial', 'promove testemunho cristão'
+  ];
+  const atitudesCorretas = [
+    'Partilhar com alegria', 'Servir com humildade', 'Contribuir com gratidão',
+    'Ajudar quem precisa', 'Viver a comunhão', 'Praticar a caridade'
+  ];
+  const atitudesErradasA = ['Agir por vaidade', 'Buscar prestígio', 'Viver isolado', 'Competir com os irmãos'];
+  const atitudesErradasB = ['Ignorar os necessitados', 'Contribuir por obrigação', 'Julgar a comunidade', 'Desanimar do serviço'];
+  const atitudesErradasC = ['Reter tudo para si', 'Servir com interesse', 'Criar divisões', 'Negligenciar a missão'];
+
+  const perguntas = [];
+  for (let i = 0; i < QUIZ_BANCO_TOTAL; i++) {
+    const tema = temas[i % temas.length];
+    const acao = acoes[i % acoes.length];
+    const correta = atitudesCorretas[i % atitudesCorretas.length];
+    const errA = atitudesErradasA[i % atitudesErradasA.length];
+    const errB = atitudesErradasB[(i + 1) % atitudesErradasB.length];
+    const errC = atitudesErradasC[(i + 2) % atitudesErradasC.length];
+    perguntas.push({
+      id: i + 1,
+      pergunta: `No contexto de ${tema}, qual atitude melhor ${acao}?`,
+      opcao_a: correta,
+      opcao_b: errA,
+      opcao_c: errB,
+      opcao_d: errC,
+      resposta: 0,
+      tema: tema,
+      ativo: 'true'
+    });
+  }
+  return perguntas;
+}
+
+function _garantirBancoQuiz_() {
+  _garantirCabecalho(SHEETS.QUIZ_PERGUNTAS, _CABECALHO_QUIZ);
+  const rows = _lerAbaSemFiltro(SHEETS.QUIZ_PERGUNTAS);
+  if (rows.length >= QUIZ_BANCO_TOTAL) return rows;
+  const sh = SH(SHEETS.QUIZ_PERGUNTAS);
+  sh.clearContents();
+  sh.appendRow(_CABECALHO_QUIZ);
+  const perguntas = _gerarBancoQuizPadrao_();
+  perguntas.forEach(q => {
+    sh.appendRow([q.id, q.pergunta, q.opcao_a, q.opcao_b, q.opcao_c, q.opcao_d, q.resposta, q.tema, q.ativo]);
+  });
+  return _lerAbaSemFiltro(SHEETS.QUIZ_PERGUNTAS);
+}
+
+function _quizDiario(paroquiaId) {
+  const banco = _garantirBancoQuiz_().filter(q => String(q.ativo || 'true').toLowerCase() !== 'false');
+  if (!banco.length) return { total: 0, perguntas: [] };
+  const seed = _sementeDoDia(paroquiaId);
+  const selecionadas = _embaralharComSeed(banco, seed).slice(0, QUIZ_DIARIO_TOTAL);
+  return {
+    total: selecionadas.length,
+    perguntas: selecionadas.map((q, idx) => ({
+      id: q.id || idx + 1,
+      pergunta: q.pergunta || '',
+      tema: q.tema || '',
+      opcoes: [q.opcao_a, q.opcao_b, q.opcao_c, q.opcao_d].filter(Boolean),
+      resposta: Number(q.resposta || 0)
+    }))
+  };
+}
+
+function _conteudoPastoralDiario(paroquiaId) {
   const data = new Date();
   const inicioAno = new Date(data.getFullYear(), 0, 1);
   const diaAno = Math.floor((data.getTime() - inicioAno.getTime()) / MS_POR_DIA) + 1;
 
   const liturgias = [
-    { referencia: 'Jo 13,34', titulo: 'Mandamento do Amor', mensagem: 'Amai-vos uns aos outros como eu vos amei.' },
-    { referencia: 'Mt 5,9', titulo: 'Bem-aventurados os pacificadores', mensagem: 'Promova reconciliação e paz em sua casa e comunidade.' },
-    { referencia: 'Lc 1,38', titulo: 'Eis aqui a serva do Senhor', mensagem: 'Disponha seu coração para servir com fé e generosidade.' },
-    { referencia: 'Sl 23', titulo: 'O Senhor é meu pastor', mensagem: 'Confie no cuidado de Deus para cada necessidade.' }
+    { referencia: 'Jo 13,34', titulo: 'Mandamento do Amor', mensagem: 'Amai-vos uns aos outros como eu vos amei.', link: URL_LITURGIA_DIARIA },
+    { referencia: 'Mt 5,9', titulo: 'Bem-aventurados os pacificadores', mensagem: 'Promova reconciliação e paz em sua casa e comunidade.', link: URL_LITURGIA_DIARIA },
+    { referencia: 'Lc 1,38', titulo: 'Eis aqui a serva do Senhor', mensagem: 'Disponha seu coração para servir com fé e generosidade.', link: URL_LITURGIA_DIARIA },
+    { referencia: 'Sl 23', titulo: 'O Senhor é meu pastor', mensagem: 'Confie no cuidado de Deus para cada necessidade.', link: URL_LITURGIA_DIARIA }
   ];
   const santos = [
-    { nome: 'São José', exemplo: 'Fidelidade e silêncio orante.' },
-    { nome: 'Nossa Senhora Aparecida', exemplo: 'Confiança e intercessão materna.' },
-    { nome: 'São Francisco de Assis', exemplo: 'Simplicidade e cuidado com os pobres.' },
-    { nome: 'Santa Teresinha', exemplo: 'Santidade nas pequenas atitudes diárias.' }
-  ];
-  const quizzes = [
-    { pergunta: 'Qual atitude melhor expressa a vida comunitária cristã?', opcoes: ['Partilhar', 'Isolar-se', 'Julgar'], resposta: 0 },
-    { pergunta: 'O dízimo está ligado principalmente a quê?', opcoes: ['Gratidão', 'Obrigação financeira', 'Prestígio'], resposta: 0 },
-    { pergunta: 'Qual valor fortalece a pastoral?', opcoes: ['Competição', 'Serviço', 'Indiferença'], resposta: 1 }
+    { nome: 'São José', exemplo: 'Fidelidade e silêncio orante.', link: URL_SANTO_DO_DIA },
+    { nome: 'Nossa Senhora Aparecida', exemplo: 'Confiança e intercessão materna.', link: URL_SANTO_DO_DIA },
+    { nome: 'São Francisco de Assis', exemplo: 'Simplicidade e cuidado com os pobres.', link: URL_SANTO_DO_DIA },
+    { nome: 'Santa Teresinha', exemplo: 'Santidade nas pequenas atitudes diárias.', link: URL_SANTO_DO_DIA }
   ];
 
   return {
     liturgia_diaria: liturgias[diaAno % liturgias.length],
     santo_do_dia: santos[diaAno % santos.length],
-    quiz: quizzes[diaAno % quizzes.length]
+    quiz: _quizDiario(paroquiaId)
   };
 }
 
@@ -971,7 +1070,9 @@ function getFielPainelPublico(params) {
     const destino = _normalizarIdParoquia(r.paroquia_destino);
     const origem = _normalizarIdParoquia(r.paroquia_origem);
     const atual = _normalizarIdParoquia(paroquiaId);
-    return (r.tipo === 'novidade' || r.tipo === 'comunicado') && (destino === 'geral' || destino === atual || origem === atual);
+    const tipo = String(r.tipo || '').toLowerCase();
+    const tipoPermitido = tipo === 'novidade' || tipo === 'comunicado' || tipo === 'dica_economia' || tipo === 'mensagem_biblica';
+    return tipoPermitido && (destino === 'geral' || destino === atual || origem === atual);
   });
   const lancamentosMes = _lerAbaSemFiltro(SHEETS.LANCAMENTOS).filter(l => {
     if (String(l.paroquia_id || '').trim() !== paroquiaId) return false;
@@ -1005,6 +1106,46 @@ function getFielPainelPublico(params) {
     };
   });
 
+  const novidades = recados
+    .filter(r => String(r.tipo || '').toLowerCase() === 'novidade' || String(r.tipo || '').toLowerCase() === 'comunicado')
+    .slice(0, MAX_NOVIDADES_PAINEL_FIEL)
+    .map(r => ({
+      id: r.id,
+      data: r.data,
+      titulo: r.titulo || 'Comunicado',
+      mensagem: r.mensagem || '',
+      tipo: r.tipo
+    }));
+
+  const dicasEconomia = recados
+    .filter(r => String(r.tipo || '').toLowerCase() === 'dica_economia')
+    .slice(0, 6)
+    .map(r => ({
+      id: r.id,
+      data: r.data,
+      titulo: r.titulo || 'Dica de economia doméstica',
+      mensagem: r.mensagem || ''
+    }));
+
+  const mensagensBiblicas = recados
+    .filter(r => String(r.tipo || '').toLowerCase() === 'mensagem_biblica')
+    .map(r => ({
+      id: r.id,
+      data: r.data,
+      titulo: r.titulo || 'Mensagem Bíblica',
+      mensagem: r.mensagem || ''
+    }));
+
+  const fallbackBiblico = [
+    { titulo: '2 Coríntios 9,7', mensagem: 'Cada um contribua segundo propôs no coração, com alegria.' },
+    { titulo: 'Lucas 6,38', mensagem: 'Dai, e vos será dado. Com a medida com que medirdes, vos medirão.' },
+    { titulo: '1 Pedro 4,10', mensagem: 'Servi uns aos outros conforme o dom que cada um recebeu.' },
+    { titulo: 'Provérbios 3,9', mensagem: 'Honra ao Senhor com teus bens e com as primícias da tua renda.' }
+  ];
+  const biblicaDiaria = mensagensBiblicas.length
+    ? mensagensBiblicas[_sementeDoDia(paroquiaId) % mensagensBiblicas.length]
+    : fallbackBiblico[_sementeDoDia(paroquiaId) % fallbackBiblico.length];
+
   return {
     ok: true,
     usuario: {
@@ -1019,13 +1160,9 @@ function getFielPainelPublico(params) {
       pix_chave: config.pixChave || '',
       qr_code_pix: config.pixQrUrl || ''
     },
-    novidades: recados.slice(0, MAX_NOVIDADES_PAINEL_FIEL).map(r => ({
-      id: r.id,
-      data: r.data,
-      titulo: r.titulo || 'Comunicado',
-      mensagem: r.mensagem || '',
-      tipo: r.tipo
-    })),
+    novidades: novidades,
+    dicas_economia: dicasEconomia,
+    mensagem_biblica_diaria: biblicaDiaria,
     status_reformas: [
       ...metasReforma,
       ...manutencoes.slice(0, 4).map(m => ({
@@ -1037,7 +1174,7 @@ function getFielPainelPublico(params) {
       }))
     ].slice(0, 8),
     distribuicao_gastos: distribuicaoGastos,
-    ..._conteudoPastoralDiario()
+    ..._conteudoPastoralDiario(paroquiaId)
   };
 }
 
