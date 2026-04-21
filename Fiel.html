@@ -170,6 +170,7 @@
 
   <script src="js/config.js"></script>
   <script src="js/api.js"></script>
+  <script src="js/questions.js"></script>
   <script>
     const el = id => document.getElementById(id);
     const STORAGE_KEY = 'susten_fiel_auth';
@@ -460,6 +461,106 @@
     });
 
     carregarParoquias().then(carregarPainel);
+
+    /* ── Quiz Diário (10 perguntas/dia a partir do banco de 300) ── */
+    function _seedDoDia() {
+      const d = new Date();
+      // YYYYMMDD
+      return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+    }
+    function _rand(seed) {
+      let s = seed >>> 0;
+      return function () {
+        s = (s * 1664525 + 1013904223) >>> 0;
+        return s / 4294967296;
+      };
+    }
+    function _selecionarQuizDiario() {
+      const banco = Array.isArray(window.QUIZ_QUESTIONS) ? window.QUIZ_QUESTIONS.slice() : [];
+      if (!banco.length) return [];
+      const rnd = _rand(_seedDoDia());
+      for (let i = banco.length - 1; i > 0; i--) {
+        const j = Math.floor(rnd() * (i + 1));
+        const t = banco[i]; banco[i] = banco[j]; banco[j] = t;
+      }
+      return banco.slice(0, 10);
+    }
+
+    const QUIZ_ESTADO_KEY = 'susten_quiz_estado';
+    function _lerEstadoQuiz() {
+      try { return JSON.parse(localStorage.getItem(QUIZ_ESTADO_KEY) || 'null') || {}; }
+      catch (_) { return {}; }
+    }
+    function _gravarEstadoQuiz(est) {
+      try { localStorage.setItem(QUIZ_ESTADO_KEY, JSON.stringify(est)); } catch (_) {}
+    }
+
+    function renderQuizDiario() {
+      const box = el('quiz-box');
+      if (!box) return;
+      const perguntas = _selecionarQuizDiario();
+      if (!perguntas.length) {
+        box.innerHTML = '<p class="muted">Banco de perguntas indisponível. Verifique sua conexão.</p>';
+        return;
+      }
+      const hoje = String(_seedDoDia());
+      const estado = _lerEstadoQuiz();
+      const concluido = estado.dia === hoje && estado.respondidas && estado.respondidas.length === perguntas.length;
+
+      if (concluido) {
+        const acertos = estado.acertos || 0;
+        box.innerHTML = `
+          <div class="card" style="margin:0">
+            <p><strong>Você já fez o quiz de hoje! 🎉</strong></p>
+            <p>Acertos: <strong>${acertos} / ${perguntas.length}</strong></p>
+            <p class="muted">O próximo quiz estará disponível amanhã.</p>
+          </div>`;
+        return;
+      }
+
+      const respondidas = (estado.dia === hoje && Array.isArray(estado.respondidas)) ? estado.respondidas.slice() : [];
+      const idxAtual = respondidas.length;
+      if (idxAtual >= perguntas.length) {
+        renderQuizDiario();
+        return;
+      }
+      const q = perguntas[idxAtual];
+      box.innerHTML = `
+        <div class="card" style="margin:0">
+          <p class="muted">Pergunta ${idxAtual + 1} de ${perguntas.length} • Categoria: <strong>${q.c || ''}</strong></p>
+          <h3 style="margin:4px 0 10px;font-size:1rem">${q.q}</h3>
+          <div id="quiz-opcoes" style="display:flex;flex-direction:column;gap:6px"></div>
+          <div id="quiz-feedback" style="margin-top:8px"></div>
+          <div style="margin-top:8px"><small class="muted">Acertos até agora: ${respondidas.filter(r => r.acertou).length} / ${respondidas.length}</small></div>
+        </div>`;
+      const op = el('quiz-opcoes');
+      q.o.forEach((txt, i) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn';
+        btn.style.textAlign = 'left';
+        btn.textContent = `${String.fromCharCode(65 + i)}) ${txt}`;
+        btn.addEventListener('click', () => _responderQuiz(i, q, perguntas, respondidas));
+        op.appendChild(btn);
+      });
+    }
+
+    function _responderQuiz(escolha, q, perguntas, respondidas) {
+      const acertou = escolha === q.a;
+      respondidas.push({ id: q.id, escolha: escolha, acertou: acertou });
+      const hoje = String(_seedDoDia());
+      const acertos = respondidas.filter(r => r.acertou).length;
+      _gravarEstadoQuiz({ dia: hoje, respondidas: respondidas, acertos: acertos });
+      const fb = el('quiz-feedback');
+      if (fb) {
+        fb.innerHTML = acertou
+          ? '<p style="color:#2a7a3a"><strong>✓ Resposta correta!</strong></p>'
+          : `<p style="color:#b33a3a"><strong>✗ Resposta incorreta.</strong> Correta: <em>${q.o[q.a]}</em></p>`;
+      }
+      // Desabilita botões
+      Array.from(document.querySelectorAll('#quiz-opcoes button')).forEach(b => b.disabled = true);
+      setTimeout(renderQuizDiario, 1400);
+    }
   </script>
 </body>
 </html>
