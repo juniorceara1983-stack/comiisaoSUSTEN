@@ -719,6 +719,7 @@ function _listarParoquiasFiel() {
     if (!paroquias[pid]) return;
     const atual = String(paroquias[pid].nome || '').trim();
     const novo = String(nome || '').trim();
+    // Se o nome atual ainda for só o ID (placeholder), substitui pelo nome real quando disponível.
     if ((!atual || atual === pid) && novo) paroquias[pid].nome = novo;
   };
   const registrar = (id, nome) => {
