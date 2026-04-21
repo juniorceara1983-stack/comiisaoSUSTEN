@@ -715,23 +715,26 @@ function _listarParoquiasFiel() {
     ['id','nome','telefone','categoria','status','ultimoDizimo','valor','paroquia_id']);
   const membros = _lerAbaSemFiltro(SHEETS.MEMBROS);
   const paroquias = {};
+  const atualizarNome = (pid, nome) => {
+    const atual = String(paroquias[pid].nome || '').trim();
+    const novo = String(nome || '').trim();
+    if ((!atual || atual === pid) && novo) paroquias[pid].nome = novo;
+  };
   const registrar = (id, nome) => {
     const pid = String(id || '').trim();
     if (!pid) return;
     if (!paroquias[pid]) paroquias[pid] = { id: pid, nome: String(nome || '').trim() || pid };
-    const nomeAtual = String(paroquias[pid].nome || '').trim();
-    const novoNome = String(nome || '').trim();
-    if ((!nomeAtual || nomeAtual === pid) && novoNome) paroquias[pid].nome = novoNome;
+    atualizarNome(pid, nome);
   };
 
   membros.forEach(m => {
-    registrar(m.paroquia_id, '');
+    registrar(m.paroquia_id);
   });
 
   _garantirCabecalho(SHEETS.USUARIOS, ['id','email','nome','paroquia_id','perfil','ativo','telefone']);
   const usuarios = _lerAbaSemFiltro(SHEETS.USUARIOS);
   usuarios.forEach(u => {
-    registrar(u.paroquia_id, '');
+    registrar(u.paroquia_id);
   });
 
   const cfgRows = SH(SHEETS.CONFIG).getDataRange().getValues();
