@@ -809,20 +809,56 @@ textarea.form-control { resize: vertical; min-height: 90px; }
   .topbar-toggle { display: flex; }
   .kpi-grid { grid-template-columns: 1fr 1fr; }
   .charts-grid { grid-template-columns: 1fr; }
+  .charts-grid .chart-card[style*="span 2"] { grid-column: span 1 !important; }
   .form-row { grid-template-columns: 1fr; }
   .form-row.three { grid-template-columns: 1fr; }
   .pix-container { grid-template-columns: 1fr; }
   .two-col-grid { grid-template-columns: 1fr; }
   .page { padding: 1rem; }
+  .page-title { font-size: 1.2rem; }
+  .page-subtitle { font-size: 0.82rem; }
+  .welcome-banner { padding: 1rem; }
+  .welcome-banner h2 { font-size: 1.1rem; }
+  .welcome-banner p  { font-size: 0.82rem; }
+  .welcome-banner::after { display: none; }
+  .card { padding: 1rem; }
+  .kpi-card { padding: 1rem; }
+  .kpi-value { font-size: 1.4rem; }
+  .kpi-icon { font-size: 1.4rem; top: 0.75rem; right: 0.75rem; }
+  .modal { padding: 1rem; max-height: 95vh; border-radius: var(--radius-sm); }
+  .modal-header { margin-bottom: 1rem; padding-bottom: 0.75rem; }
+  .modal-footer { flex-wrap: wrap; justify-content: stretch; }
+  .modal-footer .btn { flex: 1 1 auto; }
+  .settings-item { flex-wrap: wrap; gap: 0.5rem; }
+  .settings-item-left { flex: 1 1 100%; }
+  #toast-container { left: 0.75rem; right: 0.75rem; bottom: 0.75rem; }
+  .toast { width: auto; }
 }
 @media (max-width: 480px) {
   .topbar-title span { display: none; }
-  .topbar-actions { gap: 0.5rem; }
-  .topbar-btn { padding: 0.35rem 0.55rem; }
+  .topbar-actions { gap: 0.4rem; }
+  .topbar-btn {
+    padding: 0.35rem 0.55rem;
+    font-size: 0.72rem;
+  }
+  /* Painel do Fiel no topbar: mostra só o emoji para poupar espaço */
+  #btn-switch-to-fiel { font-size: 0; padding: 0.35rem 0.5rem; }
+  #btn-switch-to-fiel::before { content: '🙋'; font-size: 1rem; }
   .kpi-grid { grid-template-columns: 1fr; }
   .metas-grid { grid-template-columns: 1fr; }
   .vol-grid { grid-template-columns: 1fr; }
   .report-grid { grid-template-columns: 1fr; }
+  .page { padding: 0.75rem; }
+  .page-title { font-size: 1.05rem; }
+  .welcome-banner { padding: 0.9rem; }
+  .card { padding: 0.85rem; }
+  .kpi-card { padding: 0.85rem; }
+  .kpi-value { font-size: 1.25rem; }
+  .filter-tabs { gap: 0.35rem; }
+  .filter-tab { padding: 0.3rem 0.6rem; font-size: 0.75rem; }
+  .btn { padding: 0.55rem 0.9rem; font-size: 0.82rem; }
+  .btn-lg { padding: 0.7rem 1.1rem; font-size: 0.9rem; }
+  .liturgical-band { font-size: 0.65rem; padding: 0.25rem 0.55rem; }
 }
 
 /* ─── Divider ────────────────────────────────────── */

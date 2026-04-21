@@ -85,6 +85,11 @@ const normalizarTexto = (v = '') => String(v)
 
 const CATEGORIA_DIZIMISTA = 'Dizimista';
 
+/* ── Detecção de erro de autenticação vindo do backend ───────── */
+const AUTH_ERROR_RE = /não autorizado|Acesso negado|Usuário inativo|Token de autenticação/i;
+const isAuthError = (resposta) =>
+  !!(resposta && typeof resposta === 'object' && resposta.erro && AUTH_ERROR_RE.test(String(resposta.erro)));
+
 /* ── Navegação ──────────────────────────────────────────────── */
 const navigate = pageName => {
   if (State.currentPage === pageName) return;
@@ -1383,7 +1388,7 @@ const escapeHtml = (s) => {
 
 const carregarDados = async () => {
   // Tentar carregar do Apps Script; usar demo se não disponível
-  const [fin, lanc, metas, vols, mems, fundo, imp, metasEv, term, cae, mant, inv, prest] = await Promise.all([
+  const respostas = await Promise.all([
     API.getFinanceiro(),
     API.getLancamentos(),
     API.getMetas(),
@@ -1398,6 +1403,23 @@ const carregarDados = async () => {
     API.getInventario().catch(() => null),
     API.getPrestacaoContas().catch(() => null)
   ]);
+
+  // Se o backend responder que a sessão não está autorizada
+  // (p.ex. o usuário existe no localStorage com perfil admin
+  // mas não está/não está mais cadastrado na aba Usuários),
+  // limpa a sessão e volta para o login em vez de seguir
+  // carregando o painel com erros.
+  if (respostas.some(isAuthError)) {
+    try { localStorage.removeItem('susten_sessao'); } catch (_) {}
+    try { localStorage.removeItem('susten_fiel_auth'); } catch (_) {}
+    toast('Sessão expirada ou usuário não autorizado. Faça login novamente.', 'warning', 4000);
+    setTimeout(() => location.replace('login.html'), 800);
+    return;
+  }
+
+  // Respostas com { erro: ... } são tratadas como ausência de dados (usa demo)
+  const limpo = respostas.map(r => (r && typeof r === 'object' && r.erro) ? null : r);
+  const [fin, lanc, metas, vols, mems, fundo, imp, metasEv, term, cae, mant, inv, prest] = limpo;
 
   State.financeiro             = fin     || DEMO_DATA.financeiro;
   State.lancamentos            = lanc    || DEMO_DATA.lancamentos;

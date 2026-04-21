@@ -3,7 +3,7 @@
    Versão: 1.0.0
    =================================================== */
 
-const CACHE_NAME = 'susten-v2';
+const CACHE_NAME = 'susten-v3';
 const OFFLINE_URL = '/login.html';
 
 const STATIC_ASSETS = [
