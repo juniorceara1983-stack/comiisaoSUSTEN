@@ -716,6 +716,7 @@ function _listarParoquiasFiel() {
   const membros = _lerAbaSemFiltro(SHEETS.MEMBROS);
   const paroquias = {};
   const atualizarNome = (pid, nome) => {
+    if (!paroquias[pid]) return;
     const atual = String(paroquias[pid].nome || '').trim();
     const novo = String(nome || '').trim();
     if ((!atual || atual === pid) && novo) paroquias[pid].nome = novo;

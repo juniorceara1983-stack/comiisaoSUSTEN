@@ -238,7 +238,7 @@
           <p><strong>${qIdx + 1}. ${q.pergunta || 'Pergunta'}</strong> <span class="muted">${q.tema ? `• ${q.tema}` : ''}</span></p>
           <button type="button" class="action-btn" id="quizAbrir-${qIdx}" aria-expanded="false" onclick="abrirQuiz(${qIdx})">📝 Abrir opções de resposta</button>
           <div class="quiz-options" id="quizOpcoes-${qIdx}" style="display:none">
-            ${(Array.isArray(q.opcoes) ? q.opcoes : []).map((op, idx) => `<button type="button" onclick="responderQuiz(${qIdx},${idx})">${op}</button>`).join('')}
+            ${(Array.isArray(q.opcoes) ? q.opcoes : []).map((op, idx) => `<button type="button" aria-label="Opção ${idx + 1}: ${op}" onclick="responderQuiz(${qIdx},${idx})">${op}</button>`).join('')}
           </div>
           <p class="muted" id="quizFeedback-${qIdx}"></p>
         </div>
