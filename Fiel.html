@@ -309,12 +309,12 @@
     el('btnTrocarPainel')?.addEventListener('click', () => {
       let sess = null;
       try { sess = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch (_) { sess = null; }
-      const perfil = String(sess && sess.perfil ? sess.perfil : 'fiel').toLowerCase();
+      const perfil = String(sess && sess.perfil ? sess.perfil : '').toLowerCase();
       if (perfil === 'coordenador' || perfil === 'admin' || perfil === 'padre') {
         location.replace('index.html');
         return;
       }
-      el('sessao').textContent = 'Este acesso é de fiel. Para abrir o painel do coordenador, faça login com um usuário coordenador, admin ou padre.';
+      el('sessao')?.textContent = 'Este acesso é de fiel. Para abrir o painel do coordenador, faça login com um usuário coordenador, admin ou padre.';
     });
 
     el('loginForm').addEventListener('submit', async (ev) => {
