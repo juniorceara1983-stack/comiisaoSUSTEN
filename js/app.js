@@ -23,6 +23,7 @@ const State = {
   manutencaoPatrimonial:  [],
   inventario:             [],
   prestacaoContas:        [],
+  recados:                [],
   versiculoIdx:           0,
   filterLancamentos:  'todos',
   filterVoluntarios:  'todos',
@@ -86,7 +87,7 @@ const normalizarTexto = (v = '') => String(v)
 const CATEGORIA_DIZIMISTA = 'Dizimista';
 
 /* ── Detecção de erro de autenticação vindo do backend ───────── */
-const AUTH_ERROR_RE = /não autorizado|Acesso negado|Usuário inativo|Token de autenticação/i;
+const AUTH_ERROR_RE = /não autorizado|Acesso negado|Usuário inativo|Token de autenticação|identificar o e-mail|não autenticado/i;
 const isAuthError = (resposta) =>
   !!(resposta && typeof resposta === 'object' && resposta.erro && AUTH_ERROR_RE.test(String(resposta.erro)));
 
@@ -727,6 +728,50 @@ const renderComunicacao = () => {
     sel.innerHTML = `<option value="">-- Selecione um membro --</option>` +
       State.membros.map(m => `<option value="${m.telefone}" data-nome="${m.nome}">${m.nome}</option>`).join('');
   }
+  renderRecadosPublicados();
+};
+
+const renderRecadosPublicados = () => {
+  const box = $('lista-recados');
+  if (!box) return;
+  const recados = (Array.isArray(State.recados) ? State.recados : []).slice(0, 8);
+  box.innerHTML = recados.map(r => `
+    <div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:rgba(108,63,197,0.04)">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+        <strong>${escapeHtml(r.titulo || 'Sem título')}</strong>
+        <span class="badge badge-blue">${escapeHtml(String(r.tipo || 'comunicado'))}</span>
+      </div>
+      <div style="margin-top:6px;font-size:0.86rem;color:var(--text-secondary)">${escapeHtml(r.mensagem || '')}</div>
+    </div>
+  `).join('') || '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">Sem publicações recentes.</div></div>';
+};
+
+const publicarRecadoPainelFiel = async () => {
+  const tipo = String($('recado-tipo')?.value || 'comunicado').trim().toLowerCase();
+  const titulo = String($('recado-titulo')?.value || '').trim();
+  const mensagem = String($('recado-mensagem')?.value || '').trim();
+  const destinoTipo = String($('recado-destino')?.value || 'geral').trim();
+  if (!titulo || !mensagem) return toast('Informe título e mensagem para publicar.', 'warning');
+
+  let sessao = null;
+  try { sessao = JSON.parse(localStorage.getItem('susten_sessao') || 'null'); } catch (_) { sessao = null; }
+  const destino = destinoTipo === 'paroquia'
+    ? String((sessao && sessao.paroquia_id) || '').trim()
+    : 'geral';
+
+  const resp = await API.addRecado({
+    tipo,
+    titulo,
+    mensagem,
+    paroquia_destino: destino || 'geral'
+  });
+  if (!resp || !resp.ok) return toast((resp && resp.erro) || 'Não foi possível publicar agora.', 'error');
+
+  $('recado-titulo').value = '';
+  $('recado-mensagem').value = '';
+  await carregarDados();
+  renderComunicacao();
+  toast('Publicação enviada para o painel do fiel.', 'success');
 };
 
 window.selecionarTemplate = id => {
@@ -1401,7 +1446,8 @@ const carregarDados = async () => {
     API.getConselhoEconomico().catch(() => null),
     API.getManutencaoPatrimonial().catch(() => null),
     API.getInventario().catch(() => null),
-    API.getPrestacaoContas().catch(() => null)
+    API.getPrestacaoContas().catch(() => null),
+    API.getRecados().catch(() => null)
   ]);
 
   // Se o backend responder que a sessão não está autorizada
@@ -1419,7 +1465,7 @@ const carregarDados = async () => {
 
   // Respostas com { erro: ... } são tratadas como ausência de dados (usa demo)
   const limpo = respostas.map(r => (r && typeof r === 'object' && r.erro) ? null : r);
-  const [fin, lanc, metas, vols, mems, fundo, imp, metasEv, term, cae, mant, inv, prest] = limpo;
+  const [fin, lanc, metas, vols, mems, fundo, imp, metasEv, term, cae, mant, inv, prest, rec] = limpo;
 
   State.financeiro             = fin     || DEMO_DATA.financeiro;
   State.lancamentos            = lanc    || DEMO_DATA.lancamentos;
@@ -1435,6 +1481,7 @@ const carregarDados = async () => {
   State.manutencaoPatrimonial  = mant    || DEMO_DATA.manutencaoPatrimonial || [];
   State.inventario             = inv     || DEMO_DATA.inventario            || [];
   State.prestacaoContas        = prest   || DEMO_DATA.prestacaoContas       || [];
+  State.recados                = rec     || [];
 
   if (!fin) toast('Modo demonstração ativo – dados de exemplo carregados.', 'info', 5000);
 };
@@ -1498,6 +1545,7 @@ const bindEvents = () => {
 
   $('btn-enviar-wa')?.addEventListener('click', enviarMensagem);
   $('btn-enviar-todos')?.addEventListener('click', enviarParaTodos);
+  $('btn-publicar-recado')?.addEventListener('click', publicarRecadoPainelFiel);
 
   $('btn-salvar-config')?.addEventListener('click', salvarConfiguracoes);
 

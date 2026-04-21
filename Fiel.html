@@ -40,6 +40,9 @@
     .pix img { width: 140px; height: 140px; border-radius: 10px; border: 1px solid var(--border); background: #fff; }
     .quiz-options { display: grid; gap: 8px; margin-top: 12px; }
     .quiz-options button { text-align: left; background: #eef4f6; color: var(--text); border: 1px solid var(--border); }
+    .action-btn { background: linear-gradient(90deg, #2f6f7e, #4f8f9f); border-radius: 999px; padding: 9px 16px; font-weight: 700; }
+    .link-btn { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; background: #eef4f6; color: #205463; border: 1px solid var(--border); text-decoration: none; padding: 8px 12px; border-radius: 10px; font-weight: 600; }
+    .tips-list li, .bible-list li { margin-bottom: 10px; }
   </style>
 </head>
 <body>
@@ -63,9 +66,9 @@
         <button id="btnEntrar" type="submit">Entrar</button>
       </form>
       <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap">
-        <button id="btnTrocarPainel" type="button" style="padding:8px 14px">Painel do Coordenador</button>
-        <button id="btnSair" type="button" style="padding:8px 14px">Sair</button>
-        <span class="muted">Acesse pela tela de login unificada.</span>
+        <button id="btnTrocarPainel" class="action-btn" type="button">🛡️ Painel do Coordenador</button>
+        <button id="btnSair" class="action-btn" type="button">🚪 Sair</button>
+        <span class="muted" id="perfilHint">Acesse pela tela de login unificada.</span>
       </div>
       <p class="muted" id="sessao"></p>
     </section>
@@ -90,16 +93,29 @@
       <article class="card">
         <h2 class="title" style="font-size:1.05rem">Liturgia Diária</h2>
         <div id="liturgiaDiaria"></div>
+        <a class="link-btn" id="btnLiturgiaLink" href="https://liturgia.cancaonova.com/pb/" target="_blank" rel="noopener">📖 Abrir liturgia diária</a>
       </article>
       <article class="card">
         <h2 class="title" style="font-size:1.05rem">Santo do Dia</h2>
         <div id="santoDoDia"></div>
+        <a class="link-btn" id="btnSantoLink" href="https://santo.cancaonova.com/" target="_blank" rel="noopener">🌟 Abrir santo do dia</a>
       </article>
     </section>
 
     <section class="card">
       <h2 class="title" style="font-size:1.05rem">Quiz do Dia</h2>
       <div id="quizDoDia"></div>
+    </section>
+
+    <section class="grid two">
+      <article class="card">
+        <h2 class="title" style="font-size:1.05rem">💡 Dicas de Economia Doméstica</h2>
+        <ul id="dicasEconomia" class="tips-list"></ul>
+      </article>
+      <article class="card">
+        <h2 class="title" style="font-size:1.05rem">📜 Mensagem Bíblica Diária</h2>
+        <ul id="mensagemBiblica" class="bible-list"></ul>
+      </article>
     </section>
 
     <section class="card">
@@ -126,7 +142,7 @@
     const STORAGE_KEY = 'susten_fiel_auth';
     const SESSION_KEY = 'susten_sessao';
     let chart;
-    let quizResposta = -1;
+    let quizResposta = {};
 
     // Guarda de sessão: exige login na tela unificada.
     (function ensureSession() {
@@ -171,6 +187,8 @@
       const liturgia = data.liturgia_diaria || {};
       const santo = data.santo_do_dia || {};
       const quiz = data.quiz || {};
+      const dicasEconomia = Array.isArray(data.dicas_economia) ? data.dicas_economia : [];
+      const msgBiblica = data.mensagem_biblica_diaria || {};
 
       el('sessao').textContent = `Paróquia: ${paroquia.nome || 'Não informada'} • Perfil: ${usuario.perfil || 'fiel'}`;
       el('pixChave').textContent = paroquia.pix_chave || 'Não informada';
@@ -206,21 +224,33 @@
         <p>${liturgia.mensagem || 'Sem conteúdo disponível no momento.'}</p>
         <p class="muted">${liturgia.referencia || ''}</p>
       `;
+      if (el('btnLiturgiaLink')) el('btnLiturgiaLink').href = liturgia.link || 'https://liturgia.cancaonova.com/pb/';
 
       el('santoDoDia').innerHTML = `
         <p><strong>${santo.nome || 'Santo do dia'}</strong></p>
         <p>${santo.exemplo || ''}</p>
       `;
+      if (el('btnSantoLink')) el('btnSantoLink').href = santo.link || 'https://santo.cancaonova.com/';
 
-      const opcoesQuiz = Array.isArray(quiz.opcoes) ? quiz.opcoes : [];
-      el('quizDoDia').innerHTML = `
-        <p><strong>${quiz.pergunta || 'Sem quiz disponível no momento.'}</strong></p>
-        <div class="quiz-options">
-          ${opcoesQuiz.map((op, idx) => `<button type="button" onclick="responderQuiz(${idx})">${op}</button>`).join('')}
+      const perguntasQuiz = Array.isArray(quiz.perguntas) ? quiz.perguntas : [];
+      el('quizDoDia').innerHTML = perguntasQuiz.map((q, qIdx) => `
+        <div class="card" style="margin:0 0 10px 0;padding:14px">
+          <p><strong>${qIdx + 1}. ${q.pergunta || 'Pergunta'}</strong> <span class="muted">${q.tema ? `• ${q.tema}` : ''}</span></p>
+          <div class="quiz-options">
+            ${(Array.isArray(q.opcoes) ? q.opcoes : []).map((op, idx) => `<button type="button" onclick="responderQuiz(${qIdx},${idx})">${op}</button>`).join('')}
+          </div>
+          <p class="muted" id="quizFeedback-${qIdx}"></p>
         </div>
-        <p class="muted" id="quizFeedback"></p>
+      `).join('') || '<p class="muted">Sem quiz disponível no momento.</p>';
+      quizResposta = perguntasQuiz.reduce((acc, q, i) => { acc[i] = Number(q.resposta || 0); return acc; }, {});
+
+      el('dicasEconomia').innerHTML = dicasEconomia.map(d =>
+        `<li><strong>${d.titulo || 'Dica'}</strong><br>${d.mensagem || ''}</li>`
+      ).join('') || '<li>Sem dicas cadastradas para hoje.</li>';
+
+      el('mensagemBiblica').innerHTML = `
+        <li><strong>${msgBiblica.titulo || 'Mensagem bíblica'}</strong><br>${msgBiblica.mensagem || 'Sem mensagem disponível.'}</li>
       `;
-      quizResposta = Number(quiz.resposta);
 
       if (chart) chart.destroy();
       chart = new Chart(el('chartGastos'), {
@@ -289,15 +319,17 @@
         })(),
         liturgia_diaria: { referencia: 'Jo 13,34', titulo: 'Mandamento do Amor', mensagem: 'Amai-vos uns aos outros como eu vos amei.' },
         santo_do_dia: { nome: 'São José', exemplo: 'Fidelidade e serviço.' },
-        quiz: { pergunta: 'Qual valor fortalece a comunidade?', opcoes: ['Partilha', 'Indiferença', 'Competição'], resposta: 0 }
+         quiz: { perguntas: [{ pergunta: 'Qual valor fortalece a comunidade?', tema: 'Partilha', opcoes: ['Partilha', 'Indiferença', 'Competição', 'Vaidade'], resposta: 0 }] },
+         dicas_economia: [{ titulo: 'Planejamento semanal', mensagem: 'Anote receitas e despesas para evitar compras por impulso.' }],
+         mensagem_biblica_diaria: { titulo: '2 Coríntios 9,7', mensagem: 'Deus ama a quem dá com alegria.' }
       };
       renderPainel(fallback);
     }
 
-    window.responderQuiz = function(indice) {
-      const fb = el('quizFeedback');
+    window.responderQuiz = function(perguntaIdx, indice) {
+      const fb = el(`quizFeedback-${perguntaIdx}`);
       if (!fb) return;
-      fb.textContent = Number(indice) === Number(quizResposta) ? '✅ Resposta correta!' : '❌ Tente novamente.';
+      fb.textContent = Number(indice) === Number(quizResposta[perguntaIdx]) ? '✅ Resposta correta!' : '❌ Tente novamente.';
     };
 
     el('btnSair')?.addEventListener('click', () => {
@@ -317,6 +349,19 @@
       const aviso = el('sessao');
       if (aviso) aviso.textContent = 'Você não tem permissão para acessar o painel do coordenador. Entre com uma conta de coordenador, admin ou padre.';
     });
+
+    (function ajustarAcessoPainelCoordenador() {
+      let sess = null;
+      try { sess = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch (_) { sess = null; }
+      const perfil = String(sess && sess.perfil ? sess.perfil : '').toLowerCase();
+      const permitido = (perfil === 'coordenador' || perfil === 'admin' || perfil === 'padre');
+      const btn = el('btnTrocarPainel');
+      if (btn) btn.style.display = permitido ? 'inline-flex' : 'none';
+      const hint = el('perfilHint');
+      if (hint) hint.textContent = permitido
+        ? 'Você possui acesso ao painel do coordenador.'
+        : 'Conteúdos pastorais e comunicados da sua paróquia.';
+    })();
 
     el('loginForm').addEventListener('submit', async (ev) => {
       ev.preventDefault();
