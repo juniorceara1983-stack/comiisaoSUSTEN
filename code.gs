@@ -661,8 +661,12 @@ function getFielPainel() {
     },
     paroquia: {
       nome: config.nome || '',
+      endereco: config.endereco || '',
+      telefone: config.telefone || '',
       pix_tipo: config.pixTipo || '',
       pix_chave: config.pixChave || '',
+      pix_nome: config.pixNome || '',
+      pix_banco: config.pixBanco || '',
       qr_code_pix: config.pixQrUrl || ''
     },
     novidades: recados.slice(0, MAX_NOVIDADES_PAINEL_FIEL).map(r => ({
@@ -881,11 +885,21 @@ function loginUnificado(payload) {
       return { ok: false, erro: 'Usuário inativo.' };
     }
     if (perfil === 'coordenador' || perfil === 'admin' || perfil === 'padre') {
-      // Atualiza telefone/paroquia_id caso tenham mudado
+      // A paróquia do coordenador é imutável: sempre usa a registrada
+      // na 1ª vez. Não é permitido entrar em "Geral" nem trocar para
+      // outra paróquia depois de cadastrado.
+      const paroquiaOriginal = String(usuarioExistente.paroquia_id || '').trim();
+      if (!paroquiaOriginal) {
+        return { ok: false, erro: 'Paróquia do coordenador não encontrada. Contate o administrador.' };
+      }
+      if (paroquia_id && paroquia_id !== paroquiaOriginal) {
+        return { ok: false, erro: 'Este e-mail já está vinculado a outra paróquia. O coordenador só pode acessar a paróquia originalmente cadastrada.' };
+      }
+      // Atualiza apenas nome/telefone (paroquia não muda)
       const atualizado = Object.assign({}, usuarioExistente, {
         nome: nome || usuarioExistente.nome,
         telefone: telefone,
-        paroquia_id: paroquia_id || usuarioExistente.paroquia_id
+        paroquia_id: paroquiaOriginal
       });
       _atualizarPorId(SHEETS.USUARIOS, atualizado);
       registrarLog('LOGIN', 'Coordenador', `email=${email}`);
@@ -894,7 +908,7 @@ function loginUnificado(payload) {
         perfil: perfil,
         email: email,
         nome: atualizado.nome,
-        paroquia_id: atualizado.paroquia_id,
+        paroquia_id: paroquiaOriginal,
         telefone: telefone
       };
     }
@@ -1190,10 +1204,30 @@ function getFielPainelPublico(params) {
     paroquia: {
       id: paroquiaId,
       nome: config.nome || paroquiaId,
+      endereco: config.endereco || '',
+      telefone: config.telefone || '',
       pix_tipo: config.pixTipo || '',
       pix_chave: config.pixChave || '',
+      pix_nome: config.pixNome || '',
+      pix_banco: config.pixBanco || '',
       qr_code_pix: config.pixQrUrl || ''
     },
+    dizimistas: (function () {
+      const membros = _lerAbaSemFiltro(SHEETS.MEMBROS)
+        .filter(m => String(m.paroquia_id || '').trim() === paroquiaId);
+      return membros
+        .filter(m => {
+          const cat = String(m.categoria || '').toLowerCase();
+          return cat === 'dizimista' || cat === 'colaborador';
+        })
+        .map(m => ({
+          nome: m.nome,
+          categoria: m.categoria,
+          status: m.status,
+          ultimoDizimo: m.ultimoDizimo,
+          valor: Number(m.valor || 0)
+        }));
+    })(),
     novidades: novidades,
     dicas_economia: dicasEconomia,
     mensagem_biblica_diaria: biblicaDiaria,

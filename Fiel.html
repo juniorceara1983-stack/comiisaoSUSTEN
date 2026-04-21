@@ -118,6 +118,43 @@
       </article>
     </section>
 
+    <section class="card" id="card-dizimo-digital">
+      <h2 class="title" style="font-size:1.15rem">🙏 Dízimo Digital — Minha Oferta de Gratidão</h2>
+      <p class="muted">Contribua com sua paróquia via PIX e acompanhe dizimistas e colaboradores.</p>
+      <div class="grid two" style="margin-top:10px">
+        <div>
+          <h3 style="margin:0 0 6px;font-size:0.98rem">💳 Dados PIX / Transferência</h3>
+          <div style="font-size:0.88rem;line-height:1.6">
+            <div><strong>Banco:</strong> <span id="dd-pix-banco">—</span></div>
+            <div><strong>Nome:</strong> <span id="dd-pix-nome">—</span></div>
+            <div><strong>Tipo de Chave:</strong> <span id="dd-pix-tipo">—</span></div>
+            <div><strong>Chave PIX:</strong> <span id="dd-pix-chave">—</span>
+              <button type="button" id="dd-pix-copiar" class="link-btn" style="padding:4px 10px;margin-left:6px">Copiar</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h3 style="margin:0 0 6px;font-size:0.98rem">📱 QR Code</h3>
+          <img id="dd-pix-qr" alt="QR Code PIX" style="width:140px;height:140px;border-radius:10px;border:1px solid var(--border);background:#fff" />
+        </div>
+      </div>
+
+      <h3 style="margin:14px 0 6px;font-size:0.98rem">Dizimistas e Colaboradores</h3>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:0.9rem">
+          <thead>
+            <tr style="background:#eef4f6">
+              <th style="text-align:left;padding:8px;border-bottom:1px solid var(--border)">Nome</th>
+              <th style="text-align:left;padding:8px;border-bottom:1px solid var(--border)">Categoria</th>
+              <th style="text-align:left;padding:8px;border-bottom:1px solid var(--border)">Status</th>
+              <th style="text-align:left;padding:8px;border-bottom:1px solid var(--border)">Último Dízimo</th>
+            </tr>
+          </thead>
+          <tbody id="dd-tbody-dizimistas"></tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="card">
       <h2 class="title" style="font-size:1.05rem">Status de Reformas</h2>
       <div id="reformas" class="grid"></div>
@@ -195,6 +232,45 @@
       el('qrPix').src = paroquia.qr_code_pix || '';
       el('qrPix').style.display = paroquia.qr_code_pix ? 'block' : 'none';
 
+      // Aba Dízimo Digital (espelho do coordenador)
+      const ddBanco = el('dd-pix-banco'); if (ddBanco) ddBanco.textContent = paroquia.pix_banco || '—';
+      const ddNome  = el('dd-pix-nome');  if (ddNome)  ddNome.textContent  = paroquia.pix_nome  || '—';
+      const ddTipo  = el('dd-pix-tipo');  if (ddTipo)  ddTipo.textContent  = paroquia.pix_tipo  || '—';
+      const ddChave = el('dd-pix-chave'); if (ddChave) ddChave.textContent = paroquia.pix_chave || '—';
+      const ddQr = el('dd-pix-qr');
+      if (ddQr) {
+        ddQr.src = paroquia.qr_code_pix || '';
+        ddQr.style.display = paroquia.qr_code_pix ? 'block' : 'none';
+      }
+      const ddCopiar = el('dd-pix-copiar');
+      if (ddCopiar && !ddCopiar.dataset.bound) {
+        ddCopiar.dataset.bound = '1';
+        ddCopiar.addEventListener('click', () => {
+          const chave = (paroquia && paroquia.pix_chave) || el('dd-pix-chave')?.textContent || '';
+          if (!chave || chave === '—') return;
+          navigator.clipboard?.writeText(chave).then(
+            () => { ddCopiar.textContent = '✓ Copiado'; setTimeout(() => ddCopiar.textContent = 'Copiar', 2000); },
+            () => {}
+          );
+        });
+      }
+      const dizimistas = Array.isArray(data.dizimistas) ? data.dizimistas : [];
+      const ddTbody = el('dd-tbody-dizimistas');
+      if (ddTbody) {
+        const fmtData = (d) => {
+          if (!d || d === '—') return '—';
+          try { return new Date(d + 'T00:00:00').toLocaleDateString('pt-BR'); } catch (_) { return d; }
+        };
+        ddTbody.innerHTML = dizimistas.length ? dizimistas.map(m => `
+          <tr>
+            <td style="padding:8px;border-bottom:1px solid var(--border)">${m.nome || ''}</td>
+            <td style="padding:8px;border-bottom:1px solid var(--border)">${m.categoria || ''}</td>
+            <td style="padding:8px;border-bottom:1px solid var(--border)"><span class="status ${String(m.status || '').toLowerCase() === 'ativo' ? 'ok' : 'warn'}">${m.status || ''}</span></td>
+            <td style="padding:8px;border-bottom:1px solid var(--border)">${fmtData(m.ultimoDizimo)}</td>
+          </tr>
+        `).join('') : '<tr><td colspan="4" style="padding:12px;color:var(--muted)">Sem dizimistas/colaboradores cadastrados para esta paróquia.</td></tr>';
+      }
+
       el('novidades').innerHTML = novidades.map(n =>
         `<li><strong>${n.titulo || 'Comunicado'}</strong> — ${n.mensagem || ''}</li>`
       ).join('') || '<li>Sem novidades no momento.</li>';
@@ -271,9 +347,9 @@
 
     async function carregarParoquias() {
       const dados = await API.getParoquiasFiel();
-      const paroquias = (dados && dados.ok && Array.isArray(dados.paroquias) && dados.paroquias.length)
+      const paroquias = (dados && dados.ok && Array.isArray(dados.paroquias))
         ? dados.paroquias
-        : [{ id: 'paroquia-geral', nome: 'Paróquia Geral' }];
+        : [];
       el('paroquia').innerHTML = `<option value="">Selecione a paróquia</option>` +
         paroquias.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
     }

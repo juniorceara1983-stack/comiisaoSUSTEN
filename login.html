@@ -132,9 +132,9 @@
 
       async function carregarParoquias() {
         const dados = await API.getParoquiasFiel();
-        const paroquias = (dados && dados.ok && Array.isArray(dados.paroquias) && dados.paroquias.length)
+        const paroquias = (dados && dados.ok && Array.isArray(dados.paroquias))
           ? dados.paroquias
-          : [{ id: 'paroquia-geral', nome: 'Paróquia Geral' }];
+          : [];
         el('f-paroquia').innerHTML = '<option value="">Selecione a paróquia</option>' +
           paroquias.map(p => `<option value="${p.id}">${p.nome}</option>`).join('') +
           '<option value="__nova__">+ Cadastrar nova paróquia</option>';
