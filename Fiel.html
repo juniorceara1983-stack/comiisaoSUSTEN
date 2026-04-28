@@ -98,24 +98,78 @@
       </article>
     </section>
 
-    <section class="card" id="card-dizimo-digital">
-      <h2 class="title" style="font-size:1.15rem">🙏 Dízimo Digital — Minha Oferta de Gratidão</h2>
-      <p class="muted">Contribua com sua paróquia via PIX ou transferência.</p>
-      <div class="grid two" style="margin-top:10px">
-        <div>
-          <h3 style="margin:0 0 6px;font-size:0.98rem">💳 Dados PIX / Transferência</h3>
-          <div style="font-size:0.88rem;line-height:1.6">
+    <section id="card-dizimo-digital" style="margin-bottom:16px">
+      <!-- Versículo rotativo -->
+      <div class="card" style="background:linear-gradient(135deg,#eaf4f7,#f4f6f8);border-left:4px solid var(--primary);margin-bottom:0;border-radius:var(--radius) var(--radius) 0 0">
+        <div style="display:flex;align-items:flex-start;gap:12px">
+          <span style="font-size:1.6rem">✝️</span>
+          <div style="flex:1">
+            <em id="dd-versiculo-texto" style="font-size:0.93rem;color:var(--text,#1f2933);line-height:1.6">…</em>
+            <div id="dd-versiculo-ref" style="margin-top:4px;font-size:0.78rem;color:var(--muted);font-weight:600"></div>
+          </div>
+          <button type="button" id="dd-versiculo-trocar" class="link-btn" style="padding:4px 10px;white-space:nowrap" title="Próximo versículo">↻</button>
+        </div>
+      </div>
+
+      <div class="grid two" style="margin-top:0">
+        <!-- Dados PIX -->
+        <div class="card" style="border-radius:0 0 0 var(--radius)">
+          <h2 class="title" style="font-size:1.05rem">💳 Dados para PIX / Transferência</h2>
+          <div style="font-size:0.88rem;line-height:1.8;margin-bottom:10px">
             <div><strong>Banco:</strong> <span id="dd-pix-banco">—</span></div>
             <div><strong>Nome:</strong> <span id="dd-pix-nome">—</span></div>
             <div><strong>Tipo de Chave:</strong> <span id="dd-pix-tipo">—</span></div>
-            <div><strong>Chave PIX:</strong> <span id="dd-pix-chave">—</span>
-              <button type="button" id="dd-pix-copiar" class="link-btn" style="padding:4px 10px;margin-left:6px">Copiar</button>
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px">
+              <strong>Chave PIX:</strong>
+              <span id="dd-pix-chave" style="word-break:break-all">—</span>
+              <button type="button" id="dd-pix-copiar" class="link-btn" style="padding:4px 10px">Copiar</button>
             </div>
           </div>
+          <div style="margin-top:8px">
+            <img id="dd-pix-qr" alt="QR Code PIX" style="width:130px;height:130px;border-radius:10px;border:1px solid var(--border);background:#fff;display:none" />
+          </div>
+          <div id="dd-dizimistas-badge" style="margin-top:12px;display:none">
+            <span class="status ok" style="font-size:0.8rem">🙏 <span id="dd-dizimistas-count">—</span> dizimistas ativos</span>
+          </div>
         </div>
-        <div>
-          <h3 style="margin:0 0 6px;font-size:0.98rem">📱 QR Code</h3>
-          <img id="dd-pix-qr" alt="QR Code PIX" style="width:140px;height:140px;border-radius:10px;border:1px solid var(--border);background:#fff" />
+
+        <!-- Como Contribuir -->
+        <div class="card" style="border-radius:0 0 var(--radius) 0">
+          <h2 class="title" style="font-size:1.05rem">💡 Como Contribuir</h2>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="font-size:1.4rem">📱</span>
+              <div>
+                <strong style="display:block;font-size:0.88rem">PIX Instantâneo</strong>
+                <span style="font-size:0.78rem;color:var(--muted)">Copie a chave PIX ao lado e realize a transferência no seu banco.</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="font-size:1.4rem">💳</span>
+              <div>
+                <strong style="display:block;font-size:0.88rem">Transferência Bancária</strong>
+                <span style="font-size:0.78rem;color:var(--muted)">Use os dados bancários ao lado para transferência programada.</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="font-size:1.4rem">🏠</span>
+              <div>
+                <strong style="display:block;font-size:0.88rem">Nas Missas</strong>
+                <span style="font-size:0.78rem;color:var(--muted)">Coleta presencial durante as celebrações.</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="font-size:1.4rem">📝</span>
+              <div>
+                <strong style="display:block;font-size:0.88rem">Registro Manual</strong>
+                <span style="font-size:0.78rem;color:var(--muted)">Fale com o coordenador para registrar sua contribuição.</span>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:12px;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.3);border-radius:10px;padding:10px;font-size:0.8rem;color:var(--muted)">
+            🙏 <em>"Cada um contribua segundo propôs no seu coração… porque Deus ama ao que dá com alegria."</em>
+            <span style="display:block;font-size:0.72rem;margin-top:2px">– 2 Coríntios 9:7</span>
+          </div>
         </div>
       </div>
     </section>
@@ -145,6 +199,21 @@
         <h2 class="title" style="font-size:1.05rem">Resumo Visual</h2>
         <div id="resumo"></div>
       </article>
+    </section>
+
+    <!-- Pedido de Oração -->
+    <section class="card" id="card-oracao">
+      <h2 class="title" style="font-size:1.15rem">🙏 Pedido de Oração</h2>
+      <p class="muted">Envie um pedido de oração para o coordenador da sua paróquia. Seu pedido será tratado com sigilo pastoral.</p>
+      <form id="form-oracao" style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
+        <label for="oracao-texto" class="sr-only">Pedido de oração</label>
+        <textarea id="oracao-texto" rows="4" placeholder="Escreva aqui seu pedido de oração…"
+          style="width:100%;border-radius:10px;border:1px solid var(--border);padding:10px 12px;font-family:inherit;font-size:0.93rem;resize:vertical"></textarea>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button id="btn-enviar-oracao" type="submit" class="action-btn">🙏 Enviar Pedido</button>
+          <span id="oracao-feedback" class="muted" style="font-size:0.88rem"></span>
+        </div>
+      </form>
     </section>
   </div>
 
@@ -191,6 +260,24 @@
       }
     }
 
+    /** Retorna credenciais do fiel para chamadas à API pública.
+     *  Tenta a sessão local legada e, se ausente, usa a sessão unificada. */
+    function obterCredenciaisFiel() {
+      let sessao = obterSessaoLocal();
+      if (sessao && sessao.login && sessao.senha && sessao.paroquia_id) return sessao;
+      try {
+        const unified = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+        if (unified && unified.nome && unified.paroquia_id && unified.telefone) {
+          return {
+            login: unified.nome,
+            senha: String(unified.telefone).replace(/\D/g, ''),
+            paroquia_id: unified.paroquia_id
+          };
+        }
+      } catch (_) {}
+      return null;
+    }
+
     function renderPainel(data) {
       const usuario = data.usuario || {};
       const paroquia = data.paroquia || {};
@@ -204,7 +291,7 @@
 
       el('sessao').textContent = `Paróquia: ${paroquia.nome || 'Não informada'} • Perfil: ${usuario.perfil || 'fiel'}`;
 
-      // Aba Dízimo Digital (espelho do coordenador)
+      // Seção Dízimo Digital — versão adaptada para o fiel (sem tabela de nomes)
       const ddBanco = el('dd-pix-banco'); if (ddBanco) ddBanco.textContent = paroquia.pix_banco || '—';
       const ddNome  = el('dd-pix-nome');  if (ddNome)  ddNome.textContent  = paroquia.pix_nome  || '—';
       const ddTipo  = el('dd-pix-tipo');  if (ddTipo)  ddTipo.textContent  = paroquia.pix_tipo  || '—';
@@ -225,6 +312,37 @@
             () => {}
           );
         });
+      }
+      // Contagem de dizimistas ativos (sem nomes)
+      const ddCount = Number(paroquia.dizimistas_ativos || 0);
+      const ddBadge = el('dd-dizimistas-badge');
+      const ddCountEl = el('dd-dizimistas-count');
+      if (ddBadge && ddCountEl) {
+        ddCountEl.textContent = ddCount;
+        ddBadge.style.display = ddCount > 0 ? '' : 'none';
+      }
+      // Versículo rotativo (usa mensagem bíblica diária do backend ou fallback)
+      const versiculos = [
+        { ref: '2Cor 9:7',  texto: 'Deus ama ao que dá com alegria.' },
+        { ref: 'Mal 3:10',  texto: 'Trazei todos os dízimos à casa do tesouro.' },
+        { ref: 'Lc 21:1-4', texto: 'Esta pobre viúva deu mais do que todos.' },
+        { ref: 'Pr 3:9',    texto: 'Honra ao Senhor com os teus bens.' },
+        { ref: 'Mt 6:21',   texto: 'Onde estiver o teu tesouro, aí estará o teu coração.' }
+      ];
+      let _versiculoIdx = (function() {
+        const d = new Date();
+        return (d.getFullYear() * 1000 + d.getMonth() * 31 + d.getDate()) % versiculos.length;
+      })();
+      const atualizarVersiculo = () => {
+        const v = versiculos[_versiculoIdx % versiculos.length];
+        const vt = el('dd-versiculo-texto'); if (vt) vt.textContent = '"' + v.texto + '"';
+        const vr = el('dd-versiculo-ref');   if (vr) vr.textContent = '— ' + v.ref;
+      };
+      atualizarVersiculo();
+      const ddTrocar = el('dd-versiculo-trocar');
+      if (ddTrocar && !ddTrocar.dataset.bound) {
+        ddTrocar.dataset.bound = '1';
+        ddTrocar.addEventListener('click', () => { _versiculoIdx++; atualizarVersiculo(); });
       }
       // Capelas (se cadastradas pelo coordenador)
       const capelas = Array.isArray(paroquia.capelas) ? paroquia.capelas : [];
@@ -324,21 +442,8 @@
     }
 
     async function carregarPainel() {
-      let sessao = obterSessaoLocal();
-      // Preferir sessão unificada (susten_sessao) se a antiga estiver vazia
-      if (!sessao || !sessao.login || !sessao.senha || !sessao.paroquia_id) {
-        try {
-          const unified = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-          if (unified && unified.nome && unified.paroquia_id && unified.telefone) {
-            sessao = {
-              login: unified.nome,
-              senha: String(unified.telefone).replace(/\D/g, ''),
-              paroquia_id: unified.paroquia_id
-            };
-            salvarSessaoLocal(sessao);
-          }
-        } catch (_) {}
-      }
+      const sessao = obterCredenciaisFiel();
+      if (sessao) salvarSessaoLocal(sessao);
       if (!sessao || !sessao.login || !sessao.senha || !sessao.paroquia_id) {
         el('sessao').textContent = 'Sessão não encontrada. Redirecionando para o login…';
         setTimeout(() => location.replace('login.html'), 800);
@@ -352,8 +457,12 @@
         usuario: { perfil: 'fiel' },
         paroquia: {
           nome: DEMO_DATA.paroquia.nome,
+          pix_banco: DEMO_DATA.paroquia.pixBanco,
+          pix_nome: DEMO_DATA.paroquia.pixNome,
+          pix_tipo: DEMO_DATA.paroquia.pixTipo,
           pix_chave: DEMO_DATA.paroquia.pixChave,
-          qr_code_pix: ''
+          qr_code_pix: '',
+          dizimistas_ativos: 0
         },
         novidades: [{ titulo: 'Aviso geral', mensagem: 'Use o painel admin para publicar novidades e recados.' }],
         status_reformas: DEMO_DATA.metas.map(m => ({
@@ -407,6 +516,30 @@
       ev.preventDefault();
       // Login agora é feito exclusivamente em login.html
       location.replace('login.html');
+    });
+
+    // Pedido de Oração
+    el('form-oracao')?.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const textoEl = el('oracao-texto');
+      const feedbackEl = el('oracao-feedback');
+      const btnEl = el('btn-enviar-oracao');
+      const pedido = textoEl ? textoEl.value.trim() : '';
+      if (!pedido) { if (feedbackEl) feedbackEl.textContent = 'Escreva seu pedido antes de enviar.'; return; }
+
+      const sessao = obterCredenciaisFiel();
+      if (!sessao) { if (feedbackEl) feedbackEl.textContent = 'Faça login para enviar um pedido.'; return; }
+
+      if (btnEl) btnEl.disabled = true;
+      if (feedbackEl) feedbackEl.textContent = 'Enviando…';
+      const resp = await API.addPedidoOracao({ ...sessao, pedido });
+      if (btnEl) btnEl.disabled = false;
+      if (resp && resp.ok) {
+        if (textoEl) textoEl.value = '';
+        if (feedbackEl) { feedbackEl.textContent = '✓ Pedido enviado com sucesso! Sua intenção de oração foi encaminhada ao coordenador.'; }
+      } else {
+        if (feedbackEl) feedbackEl.textContent = '✗ ' + ((resp && resp.erro) || 'Não foi possível enviar. Tente novamente.');
+      }
     });
 
     carregarParoquias().then(carregarPainel);

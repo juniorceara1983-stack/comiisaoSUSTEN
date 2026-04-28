@@ -28,7 +28,8 @@ const SHEETS = {
   MANUTENCAO_PATRIMONIAL:'Manutencao_Patrimonial', // Cuidado da Casa Comum
   INVENTARIO:            'Inventario',             // Inventário de bens
   PRESTACAO_CONTAS:      'Prestacao_Contas',       // Balancetes publicados
-  QUIZ_PERGUNTAS:        'Quiz_Perguntas'          // Banco de perguntas do quiz diário
+  QUIZ_PERGUNTAS:        'Quiz_Perguntas',         // Banco de perguntas do quiz diário
+  PEDIDOS_ORACAO:        'Pedidos_Oracao'          // Pedidos de oração dos fiéis
 };
 
 /* ── Categorias de partilha "ad extra" (Dimensão Missionária) ── */
@@ -48,7 +49,7 @@ const PROGRESSO_MANUTENCAO_PADRAO = {
   planejada: 35
 };
 const ACOES_PERMITIDAS_FIEL = ['getSessaoUsuario', 'getFielPainel', 'getTransparenciaPublica'];
-const ACOES_PUBLICAS = ['getTransparenciaPublica', 'getParoquiasFiel', 'getFielPainelPublico', 'loginFiel', 'loginUnificado'];
+const ACOES_PUBLICAS = ['getTransparenciaPublica', 'getParoquiasFiel', 'getFielPainelPublico', 'loginFiel', 'loginUnificado', 'addPedidoOracao'];
 
 /* ── Token de segurança ──────────────────────────────────────
    IMPORTANTE: o valor real deve ser configurado em
@@ -155,6 +156,7 @@ function doGet(e) {
       case 'getFielPainel':           resultado = getFielPainel();          break;
       case 'getParoquiasFiel':        resultado = getParoquiasFiel();       break;
       case 'getFielPainelPublico':    resultado = getFielPainelPublico(e.parameter || {}); break;
+      case 'getPedidosOracao':        resultado = getPedidosOracao();                       break;
       // Endpoint público (sem dados sensíveis) – cân. 1287 §2
       case 'getTransparenciaPublica': resultado = getTransparenciaPublica(); break;
       default:
@@ -225,6 +227,7 @@ function doPost(e) {
       case 'addRecado': resultado = addRecado(payload); break;
       case 'loginFiel': resultado = loginFiel(payload); break;
       case 'loginUnificado': resultado = loginUnificado(payload); break;
+      case 'addPedidoOracao': resultado = addPedidoOracao(payload); break;
       default:
         resultado = { erro: 'Ação desconhecida: ' + action };
     }
@@ -1145,6 +1148,11 @@ function getFielPainelPublico(params) {
     const hoje = new Date();
     return d.getMonth() === hoje.getMonth() && d.getFullYear() === hoje.getFullYear();
   });
+  const membrosParoquia = _lerAbaSemFiltro(SHEETS.MEMBROS).filter(m => String(m.paroquia_id || '').trim() === paroquiaId);
+  const dizimistas_ativos = membrosParoquia.filter(m =>
+    String(m.categoria || '').toLowerCase() === 'dizimista' &&
+    String(m.status || 'ativo').toLowerCase() === 'ativo'
+  ).length;
 
   const totalDespesas = lancamentosMes.reduce((s, l) => s + Number(l.valor || 0), 0);
   const porCategoria = {};
@@ -1227,7 +1235,8 @@ function getFielPainelPublico(params) {
       pix_nome: config.pixNome || '',
       pix_banco: config.pixBanco || '',
       qr_code_pix: config.pixQrUrl || '',
-      capelas: _parseCapelasConfig(config)
+      capelas: _parseCapelasConfig(config),
+      dizimistas_ativos: dizimistas_ativos
     },
     novidades: novidades,
     dicas_economia: dicasEconomia,
@@ -1283,8 +1292,47 @@ function addRecado(data) {
 }
 
 /* ══════════════════════════════════════════════════════════
-   RELATÓRIOS
+   PEDIDOS DE ORAÇÃO
    ══════════════════════════════════════════════════════════ */
+
+const _CABECALHO_PEDIDOS_ORACAO = ['id','data','nome_fiel','paroquia_id','pedido','status'];
+
+/**
+ * Fiel envia um pedido de oração.
+ * Ação pública – autenticação via credenciais do fiel no payload.
+ */
+function addPedidoOracao(payload) {
+  _garantirCabecalho(SHEETS.PEDIDOS_ORACAO, _CABECALHO_PEDIDOS_ORACAO);
+  const auth = _autenticarFiel(payload || {});
+  if (!auth.ok) return auth;
+  const pedido = String(payload.pedido || '').trim();
+  if (!pedido) return { ok: false, erro: 'Informe o pedido de oração.' };
+  const sh = SH(SHEETS.PEDIDOS_ORACAO);
+  const id = Date.now();
+  sh.appendRow([id, new Date().toISOString(), auth.membro.nome, auth.paroquia_id, pedido, 'pendente']);
+  registrarLog('ADD', 'PedidoOracao', `nome=${auth.membro.nome} paroquia=${auth.paroquia_id}`);
+  return { ok: true, id };
+}
+
+/**
+ * Coordenador lista os pedidos de oração da sua paróquia.
+ * Requer contexto de coordenador/admin/padre.
+ */
+function getPedidosOracao() {
+  _garantirCabecalho(SHEETS.PEDIDOS_ORACAO, _CABECALHO_PEDIDOS_ORACAO);
+  const ctx = _ctx();
+  if (!ctx) throw new Error('Sessão inválida.');
+  const rows = _lerAbaSemFiltro(SHEETS.PEDIDOS_ORACAO);
+  const minhaParoquia = _normalizarIdParoquia(ctx.paroquia_id);
+  const filtrados = rows.filter(r => _normalizarIdParoquia(r.paroquia_id) === minhaParoquia);
+  // Retorna mais recentes primeiro, sem o campo identitário completo – apenas status e texto
+  return filtrados.reverse().map(r => ({
+    id: r.id,
+    data: r.data,
+    pedido: r.pedido,
+    status: r.status || 'pendente'
+  }));
+}
 
 function getRelatorio(params) {
   const { tipo, mes, ano } = params;

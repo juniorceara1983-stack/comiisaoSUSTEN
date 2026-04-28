@@ -24,6 +24,7 @@ const State = {
   inventario:             [],
   prestacaoContas:        [],
   recados:                [],
+  pedidosOracao:          [],
   whatsappTemplates:      [],
   versiculoIdx:           0,
   filterLancamentos:  'todos',
@@ -740,6 +741,7 @@ const renderComunicacao = () => {
       State.membros.map(m => `<option value="${m.telefone}" data-nome="${m.nome}">${m.nome}</option>`).join('');
   }
   renderRecadosPublicados();
+  renderPedidosOracao();
 };
 
 const renderRecadosPublicados = () => {
@@ -755,6 +757,28 @@ const renderRecadosPublicados = () => {
       <div style="margin-top:6px;font-size:0.86rem;color:var(--text-secondary)">${escapeHtml(r.mensagem || '')}</div>
     </div>
   `).join('') || '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">Sem publicações recentes.</div></div>';
+};
+
+const renderPedidosOracao = () => {
+  const box = $('lista-pedidos-oracao');
+  const badge = $('badge-pedidos-oracao');
+  const pedidos = Array.isArray(State.pedidosOracao) ? State.pedidosOracao : [];
+  if (badge) badge.textContent = pedidos.length;
+  if (!box) return;
+  if (!pedidos.length) {
+    box.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🙏</div><div class="empty-state-text">Nenhum pedido de oração recebido.</div></div>';
+    return;
+  }
+  const fmt_data = d => { try { return new Date(d).toLocaleDateString('pt-BR'); } catch (_) { return d || ''; } };
+  box.innerHTML = pedidos.map(p => `
+    <div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:rgba(47,111,126,0.04)">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:4px">
+        <span style="font-size:0.8rem;color:var(--text-muted)">${escapeHtml(fmt_data(p.data))}</span>
+        <span class="badge ${p.status === 'orado' ? 'badge-green' : 'badge-blue'}">${escapeHtml(p.status || 'pendente')}</span>
+      </div>
+      <div style="font-size:0.88rem;color:var(--text-secondary)">${escapeHtml(p.pedido || '')}</div>
+    </div>
+  `).join('');
 };
 
 const publicarRecadoPainelFiel = async () => {
@@ -1638,7 +1662,8 @@ const carregarDados = async () => {
     API.getInventario().catch(() => null),
     API.getPrestacaoContas().catch(() => null),
     API.getRecados().catch(() => null),
-    API.getConfig().catch(() => null)
+    API.getConfig().catch(() => null),
+    API.getPedidosOracao().catch(() => null)
   ]);
 
   // Se o backend responder que a sessão não está autorizada
@@ -1656,7 +1681,7 @@ const carregarDados = async () => {
 
   // Respostas com { erro: ... } são tratadas como ausência de dados (usa demo)
   const limpo = respostas.map(r => (r && typeof r === 'object' && r.erro) ? null : r);
-  const [fin, lanc, metas, vols, mems, fundo, imp, metasEv, term, cae, mant, inv, prest, rec, cfg] = limpo;
+  const [fin, lanc, metas, vols, mems, fundo, imp, metasEv, term, cae, mant, inv, prest, rec, cfg, pedOracao] = limpo;
 
   State.financeiro             = fin     || DEMO_DATA.financeiro;
   State.lancamentos            = lanc    || DEMO_DATA.lancamentos;
@@ -1680,6 +1705,7 @@ const carregarDados = async () => {
   State.inventario             = inv     || DEMO_DATA.inventario            || [];
   State.prestacaoContas        = prest   || DEMO_DATA.prestacaoContas       || [];
   State.recados                = rec     || [];
+  State.pedidosOracao          = Array.isArray(pedOracao) ? pedOracao : [];
 
   if (!fin) toast('Modo demonstração ativo – dados de exemplo carregados.', 'info', 5000);
 };

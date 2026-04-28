@@ -148,6 +148,8 @@ const API = (() => {
   const loginFiel = (data) => _post('loginFiel', data);
   const loginUnificado = (data) => _post('loginUnificado', data);
   const getFielPainelPublico = (payload) => _fetch('getFielPainelPublico', payload);
+  const addPedidoOracao = (data) => _post('addPedidoOracao', data);
+  const getPedidosOracao = () => _fetch('getPedidosOracao');
 
   return {
     getFinanceiro, getLancamentos, addLancamento, deleteLancamento,
@@ -164,7 +166,8 @@ const API = (() => {
     getInventario, addInventario, updateInventario, deleteInventario,
     getPrestacaoContas, publicarBalancete, getTransparenciaPublica,
     getFielPainel, getRecados, addRecado,
-    getParoquiasFiel, loginFiel, loginUnificado, getFielPainelPublico
+    getParoquiasFiel, loginFiel, loginUnificado, getFielPainelPublico,
+    addPedidoOracao, getPedidosOracao
   };
 })();
 
