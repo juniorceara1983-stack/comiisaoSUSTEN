@@ -260,6 +260,24 @@
       }
     }
 
+    /** Retorna credenciais do fiel para chamadas à API pública.
+     *  Tenta a sessão local legada e, se ausente, usa a sessão unificada. */
+    function obterCredenciaisFiel() {
+      let sessao = obterSessaoLocal();
+      if (sessao && sessao.login && sessao.senha && sessao.paroquia_id) return sessao;
+      try {
+        const unified = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+        if (unified && unified.nome && unified.paroquia_id && unified.telefone) {
+          return {
+            login: unified.nome,
+            senha: String(unified.telefone).replace(/\D/g, ''),
+            paroquia_id: unified.paroquia_id
+          };
+        }
+      } catch (_) {}
+      return null;
+    }
+
     function renderPainel(data) {
       const usuario = data.usuario || {};
       const paroquia = data.paroquia || {};
@@ -273,7 +291,7 @@
 
       el('sessao').textContent = `Paróquia: ${paroquia.nome || 'Não informada'} • Perfil: ${usuario.perfil || 'fiel'}`;
 
-      // Aba Dízimo Digital (espelho do coordenador, sem nomes dos dizimistas)
+      // Seção Dízimo Digital — versão adaptada para o fiel (sem tabela de nomes)
       const ddBanco = el('dd-pix-banco'); if (ddBanco) ddBanco.textContent = paroquia.pix_banco || '—';
       const ddNome  = el('dd-pix-nome');  if (ddNome)  ddNome.textContent  = paroquia.pix_nome  || '—';
       const ddTipo  = el('dd-pix-tipo');  if (ddTipo)  ddTipo.textContent  = paroquia.pix_tipo  || '—';
@@ -424,21 +442,8 @@
     }
 
     async function carregarPainel() {
-      let sessao = obterSessaoLocal();
-      // Preferir sessão unificada (susten_sessao) se a antiga estiver vazia
-      if (!sessao || !sessao.login || !sessao.senha || !sessao.paroquia_id) {
-        try {
-          const unified = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-          if (unified && unified.nome && unified.paroquia_id && unified.telefone) {
-            sessao = {
-              login: unified.nome,
-              senha: String(unified.telefone).replace(/\D/g, ''),
-              paroquia_id: unified.paroquia_id
-            };
-            salvarSessaoLocal(sessao);
-          }
-        } catch (_) {}
-      }
+      const sessao = obterCredenciaisFiel();
+      if (sessao) salvarSessaoLocal(sessao);
       if (!sessao || !sessao.login || !sessao.senha || !sessao.paroquia_id) {
         el('sessao').textContent = 'Sessão não encontrada. Redirecionando para o login…';
         setTimeout(() => location.replace('login.html'), 800);
@@ -522,15 +527,7 @@
       const pedido = textoEl ? textoEl.value.trim() : '';
       if (!pedido) { if (feedbackEl) feedbackEl.textContent = 'Escreva seu pedido antes de enviar.'; return; }
 
-      let sessao = obterSessaoLocal();
-      if (!sessao || !sessao.login || !sessao.senha || !sessao.paroquia_id) {
-        try {
-          const unified = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-          if (unified && unified.nome && unified.paroquia_id && unified.telefone) {
-            sessao = { login: unified.nome, senha: String(unified.telefone).replace(/\D/g, ''), paroquia_id: unified.paroquia_id };
-          }
-        } catch (_) {}
-      }
+      const sessao = obterCredenciaisFiel();
       if (!sessao) { if (feedbackEl) feedbackEl.textContent = 'Faça login para enviar um pedido.'; return; }
 
       if (btnEl) btnEl.disabled = true;
