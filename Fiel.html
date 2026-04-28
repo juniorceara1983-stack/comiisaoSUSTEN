@@ -370,6 +370,10 @@
       return null;
     }
 
+    function fmtBRL(valor) {
+      return `R$ ${Number(valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    }
+
     function renderPainel(data) {
       const usuario = data.usuario || {};
       const paroquia = data.paroquia || {};
@@ -391,9 +395,7 @@
       if (heroParoquia) heroParoquia.textContent = paroquia.nome ? `📍 ${paroquia.nome}` : '';
       el('sessao').textContent = `Perfil: ${usuario.perfil || 'fiel'} • Categoria: ${usuario.categoria || 'Membro'}`;
 
-      // Pre-fill the prayer name input with session name
-      const oracaoNomeEl = el('oracao-nome');
-      if (oracaoNomeEl && !oracaoNomeEl.value && nomeUsuario) oracaoNomeEl.value = nomeUsuario;
+      // Leave prayer name field empty by default so users consciously choose to share their name or stay anonymous
 
       // Stat badges — tithers and current month total
       const statDizimistas = el('stat-dizimistas');
@@ -401,9 +403,7 @@
       const mesMaisRecente = historicoDizimos.length ? historicoDizimos[historicoDizimos.length - 1] : null;
       const statDizimoMes = el('stat-dizimo-mes');
       if (statDizimoMes) {
-        statDizimoMes.textContent = mesMaisRecente
-          ? `R$ ${Number(mesMaisRecente.total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
-          : '—';
+        statDizimoMes.textContent = mesMaisRecente ? fmtBRL(mesMaisRecente.total) : '—';
       }
 
       // Tithe bar chart (last 6 months)
@@ -427,11 +427,11 @@
               responsive: true,
               plugins: {
                 legend: { display: false },
-                tooltip: { callbacks: { label: c => `R$ ${Number(c.parsed.y).toLocaleString('pt-BR')}` } }
+                tooltip: { callbacks: { label: c => fmtBRL(c.parsed.y) } }
               },
               scales: {
                 y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,.05)' },
-                  ticks: { callback: v => `R$ ${Number(v).toLocaleString('pt-BR')}` } },
+                  ticks: { callback: v => fmtBRL(v) } },
                 x: { grid: { display: false } }
               }
             }

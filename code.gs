@@ -1170,9 +1170,8 @@ function getFielPainelPublico(params) {
     return meses.map(({ ano, mes, label }) => {
       const total = todosLancamentos
         .filter(l => {
-          const cat = String(l.categoria || '').toLowerCase();
           const lDate = new Date(l.data);
-          return (cat === 'dízimo' || cat === 'dizimo') &&
+          return _normalizarTextoBasico(l.categoria) === 'dizimo' &&
             lDate.getFullYear() === ano && lDate.getMonth() === mes;
         })
         .reduce((s, l) => s + Number(l.valor || 0), 0);
@@ -1337,7 +1336,7 @@ function addPedidoOracao(payload) {
   if (!auth.ok) return auth;
   const pedido = String(payload.pedido || '').trim();
   if (!pedido) return { ok: false, erro: 'Informe o pedido de oração.' };
-  const nomeDisplay = String(payload.nome_display || auth.membro.nome || '').trim() || auth.membro.nome;
+  const nomeDisplay = String(payload.nome_display || '').trim() || auth.membro.nome || 'Anônimo';
   const emailFiel  = String(auth.membro.email || payload.login || '').trim();
   const sh = SH(SHEETS.PEDIDOS_ORACAO);
   const id = Date.now();
