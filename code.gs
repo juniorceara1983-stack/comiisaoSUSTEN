@@ -1154,6 +1154,32 @@ function getFielPainelPublico(params) {
     String(m.status || 'ativo').toLowerCase() === 'ativo'
   ).length;
 
+  // Histrico de dízimos: últimos 6 meses de receitas com categoria "Dízimo"
+  const todosLancamentos = _lerAbaSemFiltro(SHEETS.LANCAMENTOS).filter(l =>
+    String(l.paroquia_id || '').trim() === paroquiaId &&
+    String(l.tipo || '').toLowerCase() === 'receita'
+  );
+  const MESES_PTBR = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const historico_dizimos = (function() {
+    const hoje = new Date();
+    const meses = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+      meses.push({ ano: d.getFullYear(), mes: d.getMonth(), label: MESES_PTBR[d.getMonth()] });
+    }
+    return meses.map(({ ano, mes, label }) => {
+      const total = todosLancamentos
+        .filter(l => {
+          const cat = String(l.categoria || '').toLowerCase();
+          const lDate = new Date(l.data);
+          return (cat === 'dízimo' || cat === 'dizimo') &&
+            lDate.getFullYear() === ano && lDate.getMonth() === mes;
+        })
+        .reduce((s, l) => s + Number(l.valor || 0), 0);
+      return { mes: label, total };
+    });
+  })();
+
   const totalDespesas = lancamentosMes.reduce((s, l) => s + Number(l.valor || 0), 0);
   const porCategoria = {};
   lancamentosMes.forEach(l => {
@@ -1241,6 +1267,8 @@ function getFielPainelPublico(params) {
     novidades: novidades,
     dicas_economia: dicasEconomia,
     mensagem_biblica_diaria: biblicaDiaria,
+    historico_dizimos: historico_dizimos,
+    dizimistas_ativos: dizimistas_ativos,
     status_reformas: [
       ...metasReforma,
       ...manutencoes.slice(0, 4).map(m => ({
@@ -1295,11 +1323,13 @@ function addRecado(data) {
    PEDIDOS DE ORAÇÃO
    ══════════════════════════════════════════════════════════ */
 
-const _CABECALHO_PEDIDOS_ORACAO = ['id','data','nome_fiel','paroquia_id','pedido','status'];
+const _CABECALHO_PEDIDOS_ORACAO = ['id','data','nome_fiel','email_fiel','paroquia_id','pedido','nome_display','status'];
 
 /**
  * Fiel envia um pedido de oração.
  * Ação pública – autenticação via credenciais do fiel no payload.
+ * `nome_display` (opcional): nome visível no pedido; se vazio, usa o nome do cadastro.
+ * Envie `nome_display: 'Anônimo'` para pedido anônimo.
  */
 function addPedidoOracao(payload) {
   _garantirCabecalho(SHEETS.PEDIDOS_ORACAO, _CABECALHO_PEDIDOS_ORACAO);
@@ -1307,9 +1337,11 @@ function addPedidoOracao(payload) {
   if (!auth.ok) return auth;
   const pedido = String(payload.pedido || '').trim();
   if (!pedido) return { ok: false, erro: 'Informe o pedido de oração.' };
+  const nomeDisplay = String(payload.nome_display || auth.membro.nome || '').trim() || auth.membro.nome;
+  const emailFiel  = String(auth.membro.email || payload.login || '').trim();
   const sh = SH(SHEETS.PEDIDOS_ORACAO);
   const id = Date.now();
-  sh.appendRow([id, new Date().toISOString(), auth.membro.nome, auth.paroquia_id, pedido, 'pendente']);
+  sh.appendRow([id, new Date().toISOString(), auth.membro.nome, emailFiel, auth.paroquia_id, pedido, nomeDisplay, 'pendente']);
   registrarLog('ADD', 'PedidoOracao', `nome=${auth.membro.nome} paroquia=${auth.paroquia_id}`);
   return { ok: true, id };
 }
@@ -1325,10 +1357,11 @@ function getPedidosOracao() {
   const rows = _lerAbaSemFiltro(SHEETS.PEDIDOS_ORACAO);
   const minhaParoquia = _normalizarIdParoquia(ctx.paroquia_id);
   const filtrados = rows.filter(r => _normalizarIdParoquia(r.paroquia_id) === minhaParoquia);
-  // Retorna mais recentes primeiro, sem o campo identitário completo – apenas status e texto
+  // Retorna mais recentes primeiro; nome_display é o nome visível escolhido pelo fiel
   return filtrados.reverse().map(r => ({
     id: r.id,
     data: r.data,
+    nome_display: r.nome_display || r.nome_fiel || 'Anônimo',
     pedido: r.pedido,
     status: r.status || 'pendente'
   }));

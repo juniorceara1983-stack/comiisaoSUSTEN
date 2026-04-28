@@ -10,73 +10,123 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     :root {
-      --bg: #f4f6f8; --card: #fff; --text: #1f2933; --muted: #6b7785;
-      --border: rgba(15,23,42,.12); --primary: #2f6f7e; --accent: #7bc8b7;
-      --ok: #27ae60; --warn: #f5a623; --radius: 14px;
+      --bg: #f0f4f8; --card: #fff; --text: #1a2535; --muted: #6b7785;
+      --border: rgba(15,23,42,.1); --primary: #2f6f7e; --accent: #7bc8b7;
+      --ok: #27ae60; --warn: #f5a623; --radius: 16px;
+      --shadow: 0 2px 12px rgba(15,23,42,.07);
     }
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); }
-    .wrap { max-width: 1120px; margin: 0 auto; padding: 24px; }
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
-    .title { font-size: 1.35rem; margin: 0 0 8px; }
-    .sub { color: var(--muted); margin: 0; }
+    body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); padding-bottom: 32px; }
+    /* ── Hero Banner ─────────────────────────────── */
+    .hero { background: linear-gradient(135deg, #1d5162 0%, #2f6f7e 55%, #4a9ba8 100%); color: #fff; padding: 24px 20px 20px; }
+    .hero-inner { max-width: 1120px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    .hero-greeting { font-size: 1.05rem; opacity: .85; }
+    .hero-name { font-size: 1.5rem; font-weight: 800; margin: 2px 0 0; }
+    .hero-parish { font-size: .88rem; opacity: .7; margin: 4px 0 0; }
+    .hero-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .hero-btn { background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.3); color: #fff; border-radius: 999px; padding: 8px 16px; font-size: .85rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: background .2s; }
+    .hero-btn:hover { background: rgba(255,255,255,.3); }
+    /* ── Quick Nav ─────────────────────────────────── */
+    .quick-nav { background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); }
+    .quick-nav-inner { max-width: 1120px; margin: 0 auto; display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+    .quick-nav-inner::-webkit-scrollbar { display: none; }
+    .qn-btn { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 16px; background: none; border: none; border-bottom: 3px solid transparent; color: var(--muted); font-size: .72rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: color .2s, border-color .2s; }
+    .qn-btn .qn-icon { font-size: 1.3rem; }
+    .qn-btn:hover, .qn-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+    /* ── Layout ────────────────────────────────────── */
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 20px 16px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow); }
+    .card-accent { border-left: 4px solid var(--primary); }
+    .title { font-size: 1.1rem; font-weight: 700; margin: 0 0 8px; }
+    .sub { color: var(--muted); margin: 0; font-size: .9rem; }
     .grid { display: grid; gap: 16px; }
     .grid.two { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
     .login { display: flex; flex-wrap: wrap; gap: 10px; }
     .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
-    input, select, button { border-radius: 10px; border: 1px solid var(--border); padding: 10px 12px; font-family: inherit; }
-    input, select { flex: 1; min-width: 190px; }
+    input, select, button { border-radius: 10px; border: 1px solid var(--border); padding: 10px 14px; font-family: inherit; font-size: .93rem; }
+    input, select, textarea { width: 100%; }
     button { background: var(--primary); color: #fff; border: none; cursor: pointer; }
-    .muted { color: var(--muted); font-size: .9rem; }
-    .progress { height: 10px; border-radius: 999px; background: #e9eef2; overflow: hidden; }
-    .progress > span { display: block; height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); }
-    .status { font-size: .78rem; font-weight: 700; border-radius: 999px; padding: 4px 8px; display: inline-block; }
-    .status.ok { background: rgba(39,174,96,.15); color: var(--ok); }
+    .muted { color: var(--muted); font-size: .88rem; }
+    .progress { height: 8px; border-radius: 999px; background: #e0e8ee; overflow: hidden; margin: 6px 0; }
+    .progress > span { display: block; height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 999px; transition: width .6s; }
+    .status { font-size: .75rem; font-weight: 700; border-radius: 999px; padding: 4px 10px; display: inline-block; }
+    .status.ok { background: rgba(39,174,96,.13); color: #1a7a3e; }
     .status.warn { background: rgba(245,166,35,.18); color: #8f6100; }
-    .status.done { background: rgba(47,111,126,.15); color: var(--primary); }
+    .status.done { background: rgba(47,111,126,.13); color: var(--primary); }
     ul { margin: 0; padding-left: 18px; }
     li { margin: 6px 0; }
-    .action-btn { background: linear-gradient(90deg, #2f6f7e, #4f8f9f); border-radius: 999px; padding: 9px 16px; font-weight: 700; }
-    .link-btn { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; background: #eef4f6; color: #205463; border: 1px solid var(--border); text-decoration: none; padding: 8px 12px; border-radius: 10px; font-weight: 600; }
+    .action-btn { background: linear-gradient(90deg, #2f6f7e, #4f8f9f); border-radius: 999px; padding: 10px 18px; font-weight: 700; font-size: .93rem; }
+    .link-btn { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; background: #eef4f6; color: #205463; border: 1px solid var(--border); text-decoration: none; padding: 8px 14px; border-radius: 10px; font-weight: 600; font-size: .85rem; }
     .tips-list li, .bible-list li { margin-bottom: 10px; }
+    /* ── Stat badges ────────────────────────────────── */
+    .stat-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+    .stat-card { flex: 1; min-width: 130px; background: linear-gradient(135deg, #eaf4f7, #f4fafc); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; text-align: center; }
+    .stat-card .stat-val { font-size: 2rem; font-weight: 800; color: var(--primary); line-height: 1; }
+    .stat-card .stat-lbl { font-size: .72rem; color: var(--muted); margin-top: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+    /* ── Oração form ────────────────────────────────── */
+    .oracao-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 480px) { .oracao-form-row { grid-template-columns: 1fr; } }
+    /* ── Section anchors ───────────────────────────── */
+    .section-anchor { scroll-margin-top: 60px; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <section class="card">
-      <h1 class="title">Portal do Fiel</h1>
-      <p class="sub">Acompanhe novidades, reformas e comunicados da sua paróquia.</p>
-      <form class="login" id="loginForm" style="margin-top:12px;display:none">
-        <label for="login" class="sr-only">Nome</label>
-        <input id="login" type="text" placeholder="Nome (login)" />
-        <label for="senha" class="sr-only">Senha</label>
-        <input id="senha" type="tel" placeholder="Senha (número do WhatsApp)" />
-        <label for="paroquia" class="sr-only">Paróquia</label>
-        <select id="paroquia"></select>
-        <label for="dizimista" class="sr-only">É dizimista?</label>
-        <select id="dizimista">
-          <option value="" disabled selected>É dizimista?</option>
-          <option value="sim">Sim</option>
-          <option value="não">Não</option>
-        </select>
-        <button id="btnEntrar" type="submit">Entrar</button>
-      </form>
-      <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap">
-        <button id="btnTrocarPainel" class="action-btn" type="button">🛡️ Painel do Coordenador</button>
-        <button id="btnSair" class="action-btn" type="button">🚪 Sair</button>
-        <span class="muted" id="perfilHint">Acesse pela tela de login unificada.</span>
+  <!-- ── Hero Banner ──────────────────────────────────────── -->
+  <header class="hero">
+    <div class="hero-inner">
+      <div>
+        <div class="hero-greeting">Bem-vindo(a) ao</div>
+        <div class="hero-name" id="heroNome">Portal do Fiel</div>
+        <div class="hero-parish" id="heroParoquia">Carregando…</div>
+        <p style="margin:4px 0 0;font-size:.78rem;opacity:.6" id="sessao"></p>
       </div>
-      <p class="muted" id="sessao"></p>
-    </section>
+      <div class="hero-actions">
+        <button id="btnTrocarPainel" class="hero-btn" type="button" style="display:none">🛡️ Coordenador</button>
+        <button id="btnSair" class="hero-btn" type="button">🚪 Sair</button>
+      </div>
+    </div>
+  </header>
 
-    <section class="card">
-      <h2 class="title" style="font-size:1.05rem">Novidades e Comunicados</h2>
+  <!-- ── Quick Nav ──────────────────────────────────────────── -->
+  <nav class="quick-nav" aria-label="Navegação rápida">
+    <div class="quick-nav-inner">
+      <button class="qn-btn" onclick="document.getElementById('sec-novidades').scrollIntoView({behavior:'smooth'})"><span class="qn-icon">📢</span>Novidades</button>
+      <button class="qn-btn" onclick="document.getElementById('sec-dizimos').scrollIntoView({behavior:'smooth'})"><span class="qn-icon">📊</span>Dízimos</button>
+      <button class="qn-btn" onclick="document.getElementById('sec-pix').scrollIntoView({behavior:'smooth'})"><span class="qn-icon">💳</span>PIX</button>
+      <button class="qn-btn" onclick="document.getElementById('sec-oracao').scrollIntoView({behavior:'smooth'})"><span class="qn-icon">🙏</span>Oração</button>
+      <button class="qn-btn" onclick="document.getElementById('sec-quiz').scrollIntoView({behavior:'smooth'})"><span class="qn-icon">🧠</span>Quiz</button>
+      <button class="qn-btn" onclick="document.getElementById('sec-reformas').scrollIntoView({behavior:'smooth'})"><span class="qn-icon">🏗️</span>Reformas</button>
+      <button class="qn-btn" onclick="document.getElementById('sec-liturgia').scrollIntoView({behavior:'smooth'})"><span class="qn-icon">📖</span>Liturgia</button>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <!-- login form (legado / fallback) -->
+    <form class="login" id="loginForm" style="margin-top:0;display:none">
+      <label for="login" class="sr-only">Nome</label>
+      <input id="login" type="text" placeholder="Nome (login)" />
+      <label for="senha" class="sr-only">Senha</label>
+      <input id="senha" type="tel" placeholder="Senha (número do WhatsApp)" />
+      <label for="paroquia" class="sr-only">Paróquia</label>
+      <select id="paroquia"></select>
+      <label for="dizimista" class="sr-only">É dizimista?</label>
+      <select id="dizimista">
+        <option value="" disabled selected>É dizimista?</option>
+        <option value="sim">Sim</option>
+        <option value="não">Não</option>
+      </select>
+      <button id="btnEntrar" type="submit">Entrar</button>
+    </form>
+    <span class="muted" id="perfilHint" style="display:none"></span>
+
+    <section class="card section-anchor" id="sec-novidades">
+      <h2 class="title" style="font-size:1.05rem">📢 Novidades e Comunicados</h2>
       <ul id="novidades"></ul>
     </section>
 
-    <section class="grid two">
+    <section class="grid two section-anchor" id="sec-liturgia">
       <article class="card">
-        <h2 class="title" style="font-size:1.05rem">Liturgia Diária</h2>
+        <h2 class="title" style="font-size:1.05rem">📖 Liturgia Diária</h2>
         <div id="liturgiaDiaria"></div>
         <a class="link-btn" id="btnLiturgiaLink" href="https://liturgia.cancaonova.com/pb/" target="_blank" rel="noopener">📖 Abrir liturgia diária</a>
       </article>
@@ -98,7 +148,33 @@
       </article>
     </section>
 
-    <section id="card-dizimo-digital" style="margin-bottom:16px">
+    <!-- ── Gráficos de Dízimos ───────────────────────────────── -->
+    <section class="card section-anchor" id="sec-dizimos">
+      <h2 class="title">📊 Gráfico de Dízimos</h2>
+      <p class="sub" style="margin-bottom:14px">Arrecadação de dízimos nos últimos 6 meses e dizimistas ativos.</p>
+      <div class="stat-row" id="dizimos-stats">
+        <div class="stat-card">
+          <div class="stat-val" id="stat-dizimistas">—</div>
+          <div class="stat-lbl">Dizimistas Ativos</div>
+        </div>
+        <div class="stat-card" id="stat-mes-card">
+          <div class="stat-val" id="stat-dizimo-mes">—</div>
+          <div class="stat-lbl">Arrecadado este mês</div>
+        </div>
+      </div>
+      <div class="grid two">
+        <article class="card" style="margin:0;padding:14px">
+          <h3 style="margin:0 0 10px;font-size:.9rem;color:var(--muted);font-weight:600">ARRECADAÇÃO MENSAL (R$)</h3>
+          <canvas id="chartDizimos" height="220"></canvas>
+        </article>
+        <article class="card" style="margin:0;padding:14px">
+          <h3 style="margin:0 0 10px;font-size:.9rem;color:var(--muted);font-weight:600">DISTRIBUIÇÃO DE GASTOS (%)</h3>
+          <canvas id="chartGastos" height="220"></canvas>
+        </article>
+      </div>
+    </section>
+
+    <section id="sec-pix" class="section-anchor" style="margin-bottom:16px">
       <!-- Versículo rotativo -->
       <div class="card" style="background:linear-gradient(135deg,#eaf4f7,#f4f6f8);border-left:4px solid var(--primary);margin-bottom:0;border-radius:var(--radius) var(--radius) 0 0">
         <div style="display:flex;align-items:flex-start;gap:12px">
@@ -179,42 +255,57 @@
       <div id="lista-capelas" class="grid"></div>
     </section>
 
-    <section class="card" id="card-quiz-diario">
+    <section class="card section-anchor" id="sec-quiz">
       <h2 class="title" style="font-size:1.15rem">🧠 Quiz Diário</h2>
       <p class="muted">10 perguntas diárias sobre Dízimo, Catecismo, Bíblia e Santos. O quiz é renovado todo dia.</p>
       <div id="quiz-box"></div>
     </section>
 
-    <section class="card">
-      <h2 class="title" style="font-size:1.05rem">Status de Reformas</h2>
+    <section class="card section-anchor" id="sec-reformas">
+      <h2 class="title" style="font-size:1.05rem">🏗️ Status de Reformas</h2>
       <div id="reformas" class="grid"></div>
     </section>
 
-    <section class="grid two">
-      <article class="card">
-        <h2 class="title" style="font-size:1.05rem">Distribuição de Gastos (%)</h2>
-        <canvas id="chartGastos" height="240"></canvas>
-      </article>
-      <article class="card">
-        <h2 class="title" style="font-size:1.05rem">Resumo Visual</h2>
-        <div id="resumo"></div>
-      </article>
-    </section>
-
-    <!-- Pedido de Oração -->
-    <section class="card" id="card-oracao">
+    <!-- ── Pedido de Oração ────────────────────────────────── -->
+    <section class="card section-anchor" id="sec-oracao">
       <h2 class="title" style="font-size:1.15rem">🙏 Pedido de Oração</h2>
-      <p class="muted">Envie um pedido de oração para o coordenador da sua paróquia. Seu pedido será tratado com sigilo pastoral.</p>
-      <form id="form-oracao" style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
-        <label for="oracao-texto" class="sr-only">Pedido de oração</label>
-        <textarea id="oracao-texto" rows="4" placeholder="Escreva aqui seu pedido de oração…"
-          style="width:100%;border-radius:10px;border:1px solid var(--border);padding:10px 12px;font-family:inherit;font-size:0.93rem;resize:vertical"></textarea>
+      <p class="muted" style="margin-bottom:12px">Envie um pedido de oração ao coordenador da sua paróquia. Seu pedido será tratado com sigilo pastoral.</p>
+      <form id="form-oracao" style="display:flex;flex-direction:column;gap:10px">
+        <div class="oracao-form-row">
+          <div>
+            <label for="oracao-nome" style="display:block;font-size:.83rem;font-weight:600;margin-bottom:4px;color:var(--muted)">Seu nome (opcional – deixe em branco para anônimo)</label>
+            <input id="oracao-nome" type="text" placeholder="Ex.: Maria ou Anônimo" />
+          </div>
+          <div>
+            <label for="oracao-tipo" style="display:block;font-size:.83rem;font-weight:600;margin-bottom:4px;color:var(--muted)">Tipo de pedido</label>
+            <select id="oracao-tipo">
+              <option value="Intercessão">🙏 Intercessão</option>
+              <option value="Cura">💚 Cura</option>
+              <option value="Família">👨‍👩‍👧 Família</option>
+              <option value="Trabalho">💼 Trabalho</option>
+              <option value="Gratidão">🙌 Gratidão</option>
+              <option value="Outro">✨ Outro</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label for="oracao-texto" style="display:block;font-size:.83rem;font-weight:600;margin-bottom:4px;color:var(--muted)">Seu pedido</label>
+          <textarea id="oracao-texto" rows="4" placeholder="Escreva aqui sua intenção de oração…"
+            style="border-radius:10px;border:1px solid var(--border);padding:10px 12px;font-family:inherit;font-size:0.93rem;resize:vertical"></textarea>
+        </div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
           <button id="btn-enviar-oracao" type="submit" class="action-btn">🙏 Enviar Pedido</button>
           <span id="oracao-feedback" class="muted" style="font-size:0.88rem"></span>
         </div>
       </form>
     </section>
+
+    <!-- ── Resumo Visual ────────────────────────────────────── -->
+    <section class="card" id="sec-resumo">
+      <h2 class="title" style="font-size:1.05rem">📈 Resumo da Paróquia</h2>
+      <div id="resumo"></div>
+    </section>
+
   </div>
 
   <script src="js/config.js"></script>
@@ -225,6 +316,7 @@
     const STORAGE_KEY = 'susten_fiel_auth';
     const SESSION_KEY = 'susten_sessao';
     let chart;
+    let chartDizimos;
 
     // Guarda de sessão: exige login na tela unificada.
     (function ensureSession() {
@@ -288,8 +380,87 @@
       const santo = data.santo_do_dia || {};
       const dicasEconomia = Array.isArray(data.dicas_economia) ? data.dicas_economia : [];
       const msgBiblica = data.mensagem_biblica_diaria || {};
+      const historicoDizimos = Array.isArray(data.historico_dizimos) ? data.historico_dizimos : [];
+      const dizimistasAtivos = Number(data.dizimistas_ativos || paroquia.dizimistas_ativos || 0);
 
-      el('sessao').textContent = `Paróquia: ${paroquia.nome || 'Não informada'} • Perfil: ${usuario.perfil || 'fiel'}`;
+      // Hero banner
+      const nomeUsuario = usuario.nome || '';
+      const heroNome = el('heroNome');
+      if (heroNome) heroNome.textContent = nomeUsuario ? `Olá, ${nomeUsuario.split(' ')[0]}!` : 'Portal do Fiel';
+      const heroParoquia = el('heroParoquia');
+      if (heroParoquia) heroParoquia.textContent = paroquia.nome ? `📍 ${paroquia.nome}` : '';
+      el('sessao').textContent = `Perfil: ${usuario.perfil || 'fiel'} • Categoria: ${usuario.categoria || 'Membro'}`;
+
+      // Pre-fill the prayer name input with session name
+      const oracaoNomeEl = el('oracao-nome');
+      if (oracaoNomeEl && !oracaoNomeEl.value && nomeUsuario) oracaoNomeEl.value = nomeUsuario;
+
+      // Stat badges — tithers and current month total
+      const statDizimistas = el('stat-dizimistas');
+      if (statDizimistas) statDizimistas.textContent = dizimistasAtivos || '—';
+      const mesMaisRecente = historicoDizimos.length ? historicoDizimos[historicoDizimos.length - 1] : null;
+      const statDizimoMes = el('stat-dizimo-mes');
+      if (statDizimoMes) {
+        statDizimoMes.textContent = mesMaisRecente
+          ? `R$ ${Number(mesMaisRecente.total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+          : '—';
+      }
+
+      // Tithe bar chart (last 6 months)
+      const canvasDizimos = el('chartDizimos');
+      if (canvasDizimos) {
+        if (chartDizimos) chartDizimos.destroy();
+        if (historicoDizimos.length) {
+          chartDizimos = new Chart(canvasDizimos, {
+            type: 'bar',
+            data: {
+              labels: historicoDizimos.map(h => h.mes),
+              datasets: [{
+                label: 'Dízimos (R$)',
+                data: historicoDizimos.map(h => Number(h.total || 0)),
+                backgroundColor: historicoDizimos.map((_, i) => i === historicoDizimos.length - 1 ? '#2f6f7e' : '#7bc8b7'),
+                borderRadius: 8,
+                borderSkipped: false
+              }]
+            },
+            options: {
+              responsive: true,
+              plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: c => `R$ ${Number(c.parsed.y).toLocaleString('pt-BR')}` } }
+              },
+              scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,.05)' },
+                  ticks: { callback: v => `R$ ${Number(v).toLocaleString('pt-BR')}` } },
+                x: { grid: { display: false } }
+              }
+            }
+          });
+        } else {
+          canvasDizimos.parentElement.innerHTML += '<p class="muted" style="font-size:.83rem;margin-top:8px">Nenhum registro de dízimo encontrado para este período.</p>';
+        }
+      }
+
+      // Gastos pie chart
+      if (chart) chart.destroy();
+      const canvasGastos = el('chartGastos');
+      if (canvasGastos && dist.length) {
+        chart = new Chart(canvasGastos, {
+          type: 'pie',
+          data: {
+            labels: dist.map(d => d.categoria),
+            datasets: [{ data: dist.map(d => Number(d.percentual || 0)), backgroundColor: ['#2f6f7e','#7bc8b7','#5a95a3','#9fbec7','#d5e4e8','#b7d8e0'] }]
+          },
+          options: {
+            plugins: {
+              tooltip: { callbacks: { label: c => `${c.label}: ${Number(c.parsed).toFixed(1)}%` } },
+              legend: { position: 'bottom', labels: { font: { size: 11 } } }
+            }
+          }
+        });
+      } else if (canvasGastos) {
+        canvasGastos.parentElement.innerHTML += '<p class="muted" style="font-size:.83rem;margin-top:8px">Sem lançamentos de despesas neste mês.</p>';
+      }
 
       // Seção Dízimo Digital — versão adaptada para o fiel (sem tabela de nomes)
       const ddBanco = el('dd-pix-banco'); if (ddBanco) ddBanco.textContent = paroquia.pix_banco || '—';
@@ -314,12 +485,11 @@
         });
       }
       // Contagem de dizimistas ativos (sem nomes)
-      const ddCount = Number(paroquia.dizimistas_ativos || 0);
       const ddBadge = el('dd-dizimistas-badge');
       const ddCountEl = el('dd-dizimistas-count');
       if (ddBadge && ddCountEl) {
-        ddCountEl.textContent = ddCount;
-        ddBadge.style.display = ddCount > 0 ? '' : 'none';
+        ddCountEl.textContent = dizimistasAtivos;
+        ddBadge.style.display = dizimistasAtivos > 0 ? '' : 'none';
       }
       // Versículo rotativo (usa mensagem bíblica diária do backend ou fallback)
       const versiculos = [
@@ -391,7 +561,8 @@
         ? Math.round(reformas.reduce((s, r) => s + Number(r.percentual_conclusao || 0), 0) / reformas.length)
         : 0;
       el('resumo').innerHTML = `
-        <p><strong>Meta média de conclusão:</strong> ${media}%</p>
+        <p><strong>Meta média de conclusão das reformas:</strong> ${media}%</p>
+        <p><strong>Dizimistas ativos:</strong> ${dizimistasAtivos}</p>
         <p class="muted">Indicadores apresentados de forma qualitativa e percentual.</p>
       `;
 
@@ -415,21 +586,6 @@
       el('mensagemBiblica').innerHTML = `
         <li><strong>${msgBiblica.titulo || 'Mensagem bíblica'}</strong><br>${msgBiblica.mensagem || 'Sem mensagem disponível.'}</li>
       `;
-
-      if (chart) chart.destroy();
-      chart = new Chart(el('chartGastos'), {
-        type: 'pie',
-        data: {
-          labels: dist.map(d => d.categoria),
-          datasets: [{ data: dist.map(d => Number(d.percentual || 0)), backgroundColor: ['#2f6f7e','#7bc8b7','#5a95a3','#9fbec7','#d5e4e8'] }]
-        },
-        options: {
-          plugins: {
-            tooltip: { callbacks: { label: c => `${c.label}: ${Number(c.parsed).toFixed(1)}%` } },
-            legend: { position: 'bottom' }
-          }
-        }
-      });
     }
 
     async function carregarParoquias() {
@@ -472,6 +628,11 @@
           const total = DEMO_DATA.financeiro.distribuicao.reduce((s, d) => s + Number(d.valor || 0), 0) || 1;
           return DEMO_DATA.financeiro.distribuicao.map(d => ({ categoria: d.categoria, percentual: (Number(d.valor || 0) / total) * 100 }));
         })(),
+        historico_dizimos: (() => {
+          const meses = ['Jan','Fev','Mar','Abr','Mai','Jun'];
+          return meses.map((mes, i) => ({ mes, total: 8000 + i * 500 }));
+        })(),
+        dizimistas_ativos: DEMO_DATA.financeiro.dizimistas_ativos || 0,
         liturgia_diaria: { referencia: 'Jo 13,34', titulo: 'Mandamento do Amor', mensagem: 'Amai-vos uns aos outros como eu vos amei.' },
         santo_do_dia: { nome: 'São José', exemplo: 'Fidelidade e serviço.' },
          quiz: { perguntas: [{ pergunta: 'Qual valor fortalece a comunidade?', tema: 'Partilha', opcoes: ['Partilha', 'Indiferença', 'Competição', 'Vaidade'], resposta: 0 }] },
@@ -505,11 +666,7 @@
       const perfil = String(sess && sess.perfil ? sess.perfil : '').toLowerCase();
       const permitido = (perfil === 'coordenador' || perfil === 'admin' || perfil === 'padre');
       const btn = el('btnTrocarPainel');
-      if (btn) btn.style.display = permitido ? 'inline-flex' : 'none';
-      const hint = el('perfilHint');
-      if (hint) hint.textContent = permitido
-        ? 'Você possui acesso ao painel do coordenador.'
-        : 'Conteúdos pastorais e comunicados da sua paróquia.';
+      if (btn) btn.style.display = permitido ? '' : 'none';
     })();
 
     el('loginForm').addEventListener('submit', async (ev) => {
@@ -521,22 +678,29 @@
     // Pedido de Oração
     el('form-oracao')?.addEventListener('submit', async (ev) => {
       ev.preventDefault();
-      const textoEl = el('oracao-texto');
+      const textoEl    = el('oracao-texto');
+      const nomeEl     = el('oracao-nome');
+      const tipoEl     = el('oracao-tipo');
       const feedbackEl = el('oracao-feedback');
-      const btnEl = el('btn-enviar-oracao');
+      const btnEl      = el('btn-enviar-oracao');
       const pedido = textoEl ? textoEl.value.trim() : '';
       if (!pedido) { if (feedbackEl) feedbackEl.textContent = 'Escreva seu pedido antes de enviar.'; return; }
 
       const sessao = obterCredenciaisFiel();
       if (!sessao) { if (feedbackEl) feedbackEl.textContent = 'Faça login para enviar um pedido.'; return; }
 
+      const nomeDisplay = nomeEl ? (nomeEl.value.trim() || 'Anônimo') : 'Anônimo';
+      const tipo = tipoEl ? tipoEl.value : '';
+      const pedidoCompleto = tipo ? `[${tipo}] ${pedido}` : pedido;
+
       if (btnEl) btnEl.disabled = true;
       if (feedbackEl) feedbackEl.textContent = 'Enviando…';
-      const resp = await API.addPedidoOracao({ ...sessao, pedido });
+      const resp = await API.addPedidoOracao({ ...sessao, pedido: pedidoCompleto, nome_display: nomeDisplay });
       if (btnEl) btnEl.disabled = false;
       if (resp && resp.ok) {
         if (textoEl) textoEl.value = '';
-        if (feedbackEl) { feedbackEl.textContent = '✓ Pedido enviado com sucesso! Sua intenção de oração foi encaminhada ao coordenador.'; }
+        if (feedbackEl) { feedbackEl.textContent = '✓ Pedido enviado! Sua intenção de oração foi encaminhada ao coordenador.'; }
+        setTimeout(() => { if (feedbackEl) feedbackEl.textContent = ''; }, 5000);
       } else {
         if (feedbackEl) feedbackEl.textContent = '✗ ' + ((resp && resp.erro) || 'Não foi possível enviar. Tente novamente.');
       }
